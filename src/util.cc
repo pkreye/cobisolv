@@ -222,6 +222,8 @@ void print_output(int maxNodes, int8_t *solution, long numPartCalls, double ener
         fprintf(outFile_, "%d", solution[i]);
     }
     fprintf(outFile_, "\n");
+    fprintf(outFile_, "Initial pass factor: %ld\n", param->preSearchPassFactor);
+    fprintf(outFile_, "Global pass factor: %ld\n", param->globalSearchPassFactor);
     fprintf(outFile_, "%8.5f Energy of solution\n", energy);
     fprintf(outFile_, "%ld Number of Partitioned calls, %d output sample \n", numPartCalls, numsolOut_);
     fprintf(outFile_, "%8.5f seconds of classic cpu time", seconds);
@@ -230,6 +232,34 @@ void print_output(int maxNodes, int8_t *solution, long numPartCalls, double ener
     } else {
         fprintf(outFile_, "\n");
     }
+}
+
+//  This routine performs the standard output for qbsolv
+//
+void print_my_output(int maxNodes, int8_t *solution, long numPartCalls, double energy, double seconds,
+                  parameters_t *param) {
+    // int i;
+    // if (numsolOut_ > 0) {
+    //     print_opts(maxNodes, param);
+    // }
+    // numsolOut_++;
+    // for (i = 0; i < maxNodes; i++) {
+    //     fprintf(outFile_, "%d", solution[i]);
+    // }
+    fprintf(outFile_, "| %s | %ld | %ld | %8.1f| %ld | %8.2f |\n",
+            param->problemName,
+            param->preSearchPassFactor,
+            param->globalSearchPassFactor,
+            energy,
+            numPartCalls,
+            seconds
+           );
+
+    // if (TargetSet_) {
+    //     fprintf(outFile_, " ,Target of %8.5f\n", Target_);
+    // } else {
+    //     fprintf(outFile_, "\n");
+    // }
 }
 
 int partition(double val[], int arr[], int l, int h) {

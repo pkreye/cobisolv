@@ -41,6 +41,7 @@ double **val;
 double Target_, Time_;
 struct nodeStr_ *nodes_;
 struct nodeStr_ *couplers_;
+
 //  main routine,
 //  -read the command line
 //  -read the input qubo file
@@ -60,6 +61,8 @@ int main(int argc, char *argv[]) {
      */
 
     parameters_t param = default_parameters();
+
+    bool unixStyleOutput = false;
 
     bool use_dwave = false;
 
@@ -99,6 +102,9 @@ int main(int argc, char *argv[]) {
                                        {"tlist", required_argument, NULL, 'l'},
                                        {"seed", required_argument, NULL, 'r'},
                                        {"Algo", required_argument, NULL, 'a'},
+                                       {"preSearchPassFactor", required_argument, NULL, 'p'},
+                                       {"globalSearchPassFactor", required_argument, NULL, 'g'},
+                                       {"unixOutput", no_argument, NULL, 'u'},
                                        {NULL, no_argument, NULL, 0}};
 
     int opt, option_index = 0;
@@ -107,7 +113,7 @@ int main(int argc, char *argv[]) {
         use_dwave = true;
     }
 
-    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:", longopts, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:u:", longopts, &option_index)) != -1) {
         switch (opt) {
             case 'a':
                 strcpy(algo_, optarg);  // algorithm copied off of command line -a option
@@ -130,6 +136,10 @@ int main(int argc, char *argv[]) {
                 exit(0);
             case 'i':
                 inFileName = optarg;
+
+                strncpy(param.problemName, inFileName, 25);
+                param.problemName[25] = '\0';
+
                 if ((inFile = fopen(inFileName, "r")) == NULL) {
                     fprintf(stderr,
                             "\n\t Error - can't find/open file "
@@ -200,6 +210,18 @@ int main(int argc, char *argv[]) {
             case 'w':
                 WriteMatrix_ = true;
                 break;
+            case 'p':
+                // Overwrite initial global tabu search pass factor
+                param.preSearchPassFactor = strtol(optarg, &chx, 10);
+                /* printf("Test: %ld, %d\n", param.preSearchPassFactor, param.preSearchPassFactor); */
+                break;
+            case 'g':
+                // Overwrite the repeated global tabu search pass factor
+                param.globalSearchPassFactor = strtol(optarg, &chx, 10);
+                break;
+            case 'u':
+                unixStyleOutput = true;
+                break;
             default: /* '?' or unknown */
                 print_help();
                 exit(0);
@@ -237,7 +259,10 @@ int main(int argc, char *argv[]) {
         param.sub_sampler = &dw_sub_sample;
     }
     numsolOut_ = 0;
-    print_opts(maxNodes_, &param);
+
+    /* if (!unixStyleOutput) { */
+    /*     print_opts(maxNodes_, &param); */
+    /* } */
 
     // get some memory for storing and shorting Q bit vectors
     int QLEN = 20;  // the max number of solutions to store in soltuion_lists

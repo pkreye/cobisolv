@@ -35,6 +35,11 @@ typedef struct parameters_t {
     int32_t sub_size;
     // Extra parameter data passed to sub_sampler for callback specific data.
     void* sub_sampler_data;
+
+    char problemName[25];
+    int32_t preSearchPassFactor;
+    int32_t globalSearchPassFactor;
+
 } parameters_t;
 
 // Get the default values for the optional parameters structure

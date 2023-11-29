@@ -67,7 +67,7 @@ void randomize_pop_solution_by_index(int8_t *solution, int nbits, int *indices);
 // shuffle the index vector before sort
 void shuffle_index(int *indices, int length);
 
-// shuffle the solution vector 
+// shuffle the solution vector
 void shuffle_solution(int8_t *solution, int length);
 
 //  print out the bit vector as row and column, surrounding the Qubo in triangular form  used in the -w option
@@ -79,6 +79,9 @@ void print_opts(int maxNodes, parameters_t *param);
 //  This routine performs the standard output for qbsolv
 void print_output(int maxNodes, int8_t *solution, long numPartCalls, double energy, double seconds,
                   parameters_t *param);
+
+void print_my_output(int maxNodes, int8_t *solution, long numPartCalls, double energy, double seconds,
+                     parameters_t *param);
 
 /* val[] --> Array to be sorted,
    arr[] --> index to point to order from largest to smallest

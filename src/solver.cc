@@ -600,6 +600,8 @@ parameters_t default_parameters() {
     param.sub_sampler = &tabu_sub_sample;
     param.sub_size = 47;
     param.sub_sampler_data = NULL;
+    param.preSearchPassFactor = 0;
+    param.globalSearchPassFactor = 0;
     return param;
 }
 
@@ -669,8 +671,9 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
     //
     const int Progress_check = 12;                // number of non-progresive passes thru main loop before reset
     const float SubMatrix_span = 0.214f;          // percent of the total size will be covered by the subMatrix pass
-    const int64_t InitialTabuPass_factor = 6500;  // initial pass factor for tabu iterations
-    const int64_t TabuPass_factor = 1700;         // iterative pass factor for tabu iterations
+
+    const int64_t InitialTabuPass_factor = param->preSearchPassFactor;  // initial pass factor for tabu iterations (original: 6500)
+    const int64_t TabuPass_factor = param->globalSearchPassFactor;      // iterative pass factor for tabu iterations (original: 1700)
 
     const int subMatrix = param->sub_size;
     int MaxNodes_sub = MAX(subMatrix + 1, SubMatrix_span * qubo_size);
@@ -687,54 +690,54 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
     double sign = findMax_ ? 1.0 : -1.0;
     struct sol_man_rslt result;
 
-    // <--
-    // // run initial Searches to prime the solutions for outer loop based upon algorithm choice
-    // //
-    // if (strncmp(&algo_[0], "o", strlen("o")) == 0) {
-    //     IterMax = bit_flips + (int64_t)MAX((int64_t)400, InitialTabuPass_factor * (int64_t)qubo_size);
-    //     if (Verbose_ > 2) {
-    //         DLT;
-    //         printf(" Starting Full initial Tabu\n");
-    //     }
-    //     energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,
-    //                          TargetSet_, index, 0);
+    // run initial Searches to prime the solutions for outer loop based upon algorithm choice
     //
-    //     // save best result
-    //     best_energy = energy;
-    //     result = manage_solutions(solution, solution_list, energy, energy_list, solution_counts, Qindex, QLEN,
-    //                               qubo_size, &num_nq_solutions);
-    //     Qbest = &solution_list[Qindex[0]][0];
-    //
-    // } else if (strncmp(&algo_[0], "d", strlen("d")) == 0) {
-    //     // when using this method we need at least solutions for a "differential" backbone this
-    //     // step is to prime the solution sets with at least one more
-    //     //
-    //     len_index = 0;
-    //     int pass = 0;
-    //     while (len_index < MIN(1 * subMatrix, qubo_size / 2)) {
-    //         // DL;printf(" len_index %d %d \n",len_index,pass);
-    //         randomize_solution(solution, qubo_size);
-    //         energy = local_search(solution, qubo_size, qubo, flip_cost, &bit_flips);
-    //         result = manage_solutions(solution, solution_list, energy, energy_list, solution_counts, Qindex, QLEN,
-    //                                   qubo_size, &num_nq_solutions);
-    //         len_index = mul_index_solution_diff(solution_list, num_nq_solutions, qubo_size, Pcompress, 0, Qindex);
-    //         if (pass++ > 40) break;
-    //         // printf(" len_index = %d  NU %d  energy %lf\n",len_index,NU,energy);
-    //     }
-    //     solution_population(solution, solution_list, num_nq_solutions, qubo_size, Qindex, 10);
-    //     IterMax = bit_flips + (int64_t)MAX((int64_t)40, InitialTabuPass_factor * (int64_t)qubo_size / 2);
-    //     energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,
-    //                          TargetSet_, index, 0);
-    //     result = manage_solutions(solution, solution_list, energy, energy_list, solution_counts, Qindex, QLEN,
-    //                               qubo_size, &num_nq_solutions);
-    //     Qbest = &solution_list[Qindex[0]][0];
-    //     best_energy = energy_list[Qindex[0]];
-    //
-    // } else {
-    //     fprintf(stderr, "Did not recognize algorithm %s\n", algo_);
-    //     exit(2);
-    // }
-    // -->
+    if (strncmp(&algo_[0], "o", strlen("o")) == 0) {
+        IterMax = bit_flips + (int64_t)MAX((int64_t)400, InitialTabuPass_factor * (int64_t)qubo_size);
+        if (Verbose_ > 2) {
+            DLT;
+            printf(" Starting Full initial Tabu\n");
+        }
+        // printf("pre search IterMax: %d\n", IterMax);
+
+        energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,
+                             TargetSet_, index, 0);
+
+        // save best result
+        best_energy = energy;
+        result = manage_solutions(solution, solution_list, energy, energy_list, solution_counts, Qindex, QLEN,
+                                  qubo_size, &num_nq_solutions);
+        Qbest = &solution_list[Qindex[0]][0];
+
+    } else if (strncmp(&algo_[0], "d", strlen("d")) == 0) {
+        // when using this method we need at least solutions for a "differential" backbone this
+        // step is to prime the solution sets with at least one more
+        //
+        len_index = 0;
+        int pass = 0;
+        while (len_index < MIN(1 * subMatrix, qubo_size / 2)) {
+            // DL;printf(" len_index %d %d \n",len_index,pass);
+            randomize_solution(solution, qubo_size);
+            energy = local_search(solution, qubo_size, qubo, flip_cost, &bit_flips);
+            result = manage_solutions(solution, solution_list, energy, energy_list, solution_counts, Qindex, QLEN,
+                                      qubo_size, &num_nq_solutions);
+            len_index = mul_index_solution_diff(solution_list, num_nq_solutions, qubo_size, Pcompress, 0, Qindex);
+            if (pass++ > 40) break;
+            // printf(" len_index = %d  NU %d  energy %lf\n",len_index,NU,energy);
+        }
+        solution_population(solution, solution_list, num_nq_solutions, qubo_size, Qindex, 10);
+        IterMax = bit_flips + (int64_t)MAX((int64_t)40, InitialTabuPass_factor * (int64_t)qubo_size / 2);
+        energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,
+                             TargetSet_, index, 0);
+        result = manage_solutions(solution, solution_list, energy, energy_list, solution_counts, Qindex, QLEN,
+                                  qubo_size, &num_nq_solutions);
+        Qbest = &solution_list[Qindex[0]][0];
+        best_energy = energy_list[Qindex[0]];
+
+    } else {
+        fprintf(stderr, "Did not recognize algorithm %s\n", algo_);
+        exit(2);
+    }
 
     val_index_sort(index, flip_cost, qubo_size);  // create index array of sorted values
     if (Verbose_ > 0) {
@@ -766,9 +769,8 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
 
     // outer loop begin
     while (ContinueWhile) {
-        // <--
-        // if (qubo_size > 20 &&
-        //     subMatrix < qubo_size) {  // these are of the size that will use updates from submatrix processing
+        if (qubo_size > 20 &&
+            subMatrix < qubo_size) {  // these are of the size that will use updates from submatrix processing
             if (strncmp(&algo_[0], "o", strlen("o")) == 0) {
                 // use the first "remove" index values to remove rows and columns from new matrix
                 // initial TabuK to nothing tabu sub_solution[i] = Q[i];
@@ -855,7 +857,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                 // completed submatrix passes
                 if (Verbose_ > 1) printf("\n");
             }
-            // } // -->
+        }
         if (Verbose_ > 1) {
             DLT;
             printf(" ***Full Tabu  -- after partition pass \n");
@@ -865,12 +867,8 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
         IterMax = bit_flips + TabuPass_factor * (int64_t)qubo_size;
         val_index_sort(index, flip_cost, qubo_size);  // Create index array of sorted values
 
-        // <--
-        // energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,
-        //                      TargetSet_, index, 0);
-        // -->
-
-        energy = evaluate(solution, qubo_size, (const double **)qubo, flip_cost);
+        energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,
+                             TargetSet_, index, 0);
 
         val_index_sort(index, flip_cost, qubo_size);  // Create index array of sorted values
 
@@ -926,7 +924,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
         if (TargetSet_) {
             if (best_energy >= (sign * Target_)) {
                 ContinueWhile = false;
-                printf("Terminated due to target: best_energy: %f, target: %f\n", best_energy, sign*Target_);
+                // printf("Terminated due to target: best_energy: %f, target: %f\n", best_energy, sign*Target_);
             } else {
                 ContinueWhile = true;
             }
@@ -935,7 +933,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                 ContinueWhile = true;
             } else {
                 ContinueWhile = false;
-                printf("Terminated due to repeats: RepetPass: %d, param->repeats: %d\n", RepeatPass, param->repeats);
+                // printf("Terminated due to repeats: RepetPass: %d, param->repeats: %d\n", RepeatPass, param->repeats);
             }
         }
 
@@ -953,7 +951,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
         best_energy = energy_list[Qindex[0]];
         // printf(" evaluated solution %8.2lf\n",
         //     sign * Simple_evaluate(Qbest, qubo_size, (const double **)qubo));
-        print_output(qubo_size, Qbest, numPartCalls, best_energy * sign, CPSECONDS, param);
+        print_my_output(qubo_size, Qbest, numPartCalls, best_energy * sign, CPSECONDS, param);
     }
 
     free(solution);
