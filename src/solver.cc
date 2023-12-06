@@ -407,6 +407,19 @@ double tabu_search(int8_t *solution, int8_t *best, uint qubo_size, double **qubo
     return final_energy;
 }
 
+double tabu_search_initial(int8_t *solution, int8_t *best, uint qubo_size, double **qubo, double *flip_cost, int64_t *bit_flips,
+                   int64_t iter_max, int *TabuK, double target, bool target_set, int *index, int nTabu) {
+    if (Verbose_ > 2) {
+        printf("initial Tabu\n");
+    }
+
+    tabu_search(solution, best, qubo_size, qubo, flip_cost, bit_flips,
+                   iter_max, TabuK, target, target_set, index, nTabu);
+}
+
+
+
+
 // reduce() computes a subQUBO (val_s) from large QUBO (val)
 // for the purposes of optimizing on a subregion (a subset of the variables).
 // It does this by fixing all variables outside the subregion to their current values,
@@ -640,6 +653,11 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
     long numPartCalls = 0;
     int64_t bit_flips = 0, IterMax;
 
+    clock_t startTicks = 0;
+    clock_t initialTabuTicks = 0;
+    clock_t globalTabuTicks = 0;
+    clock_t subQuboTicks = 0;
+
     start_ = clock();
     bit_flips = 0;
 
@@ -666,7 +684,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
     double best_energy;
     int *Pcompress;
 
-    if (GETMEM(Pcompress, int, qubo_size) == NULL) BADMALLOC
+        if (GETMEM(Pcompress, int, qubo_size) == NULL) BADMALLOC
     // initialize and set some tuning parameters
     //
     const int Progress_check = 12;                // number of non-progresive passes thru main loop before reset
@@ -700,8 +718,10 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
         }
         // printf("pre search IterMax: %d\n", IterMax);
 
-        energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,
+        startTicks = clock();
+        energy = tabu_search_initial(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,
                              TargetSet_, index, 0);
+        initialTabuTicks = clock() - startTicks;
 
         // save best result
         best_energy = energy;
@@ -800,6 +820,9 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                 }
             } else {
                 int change = 0;
+
+                startTicks = clock();
+
                 {  // scope of parallel region
                     int t_change = 0;
                     int *Icompress;
@@ -834,6 +857,8 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                     free(Icompress);
                 }
 
+                subQuboTicks += clock() - startTicks;
+
                 // submatrix search did not produce enough new values, so randomize those bits
                 if (change <= 2) {
                     if (strncmp(&algo_[0], "o", strlen("o")) == 0) {
@@ -867,8 +892,11 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
         IterMax = bit_flips + TabuPass_factor * (int64_t)qubo_size;
         val_index_sort(index, flip_cost, qubo_size);  // Create index array of sorted values
 
+        startTicks = clock();
         energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,
                              TargetSet_, index, 0);
+        globalTabuTicks += clock() - startTicks;
+
 
         val_index_sort(index, flip_cost, qubo_size);  // Create index array of sorted values
 
@@ -951,7 +979,11 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
         best_energy = energy_list[Qindex[0]];
         // printf(" evaluated solution %8.2lf\n",
         //     sign * Simple_evaluate(Qbest, qubo_size, (const double **)qubo));
-        print_my_output(qubo_size, Qbest, numPartCalls, best_energy * sign, CPSECONDS, param);
+        clock_t totalTicks = clock() - start_;
+
+        print_my_output(qubo_size, Qbest, numPartCalls, best_energy * sign,  param, totalTicks,
+                        initialTabuTicks, globalTabuTicks, subQuboTicks
+                       );
     }
 
     free(solution);
