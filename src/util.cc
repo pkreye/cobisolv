@@ -236,9 +236,8 @@ void print_output(int maxNodes, int8_t *solution, long numPartCalls, double ener
 
 //  This routine performs the modified output
 //
-void print_my_output(int maxNodes, int8_t *solution, long numPartCalls, double energy,
-                     parameters_t *param,
-                     clock_t totalTicks, clock_t initialTabuTicks, clock_t globalTabuTicks, clock_t subQuboTicks
+void print_delimited_output(int maxNodes, int8_t *solution, long numPartCalls, double energy, parameters_t *param,
+                     double totalTime, double initialTabuTime, double globalTabuTime, double subQuboTime
                     ) {
     // int i;
     // if (numsolOut_ > 0) {
@@ -248,21 +247,19 @@ void print_my_output(int maxNodes, int8_t *solution, long numPartCalls, double e
     // for (i = 0; i < maxNodes; i++) {
     //     fprintf(outFile_, "%d", solution[i]);
     // }
-    fprintf(outFile_, "%s  %ld  %ld  %8.1f %ld  %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f %8.4f\n",
+    fprintf(outFile_, "%s  %ld  %ld  %8.1f %ld  %8.4f %8.4f %8.4f %8.4f %ld\n",
             param->problemName,
             param->preSearchPassFactor,
             param->globalSearchPassFactor,
             energy,
             numPartCalls,
 
-            ((double) initialTabuTicks / CLOCKS_PER_SEC),
-            ((double) globalTabuTicks / CLOCKS_PER_SEC),
-            ((double) subQuboTicks / CLOCKS_PER_SEC),
-            ((double) totalTicks / CLOCKS_PER_SEC),
+            initialTabuTime,
+            globalTabuTime,
+            subQuboTime,
+            totalTime,
 
-            (double) initialTabuTicks / totalTicks,
-            (double) globalTabuTicks / totalTicks,
-            (double) subQuboTicks / totalTicks
+            param->seed
            );
 
     // if (TargetSet_) {

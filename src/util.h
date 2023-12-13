@@ -80,9 +80,9 @@ void print_opts(int maxNodes, parameters_t *param);
 void print_output(int maxNodes, int8_t *solution, long numPartCalls, double energy, double seconds,
                   parameters_t *param);
 
-void print_my_output(int maxNodes, int8_t *solution, long numPartCalls, double energy,
-                     parameters_t *param,
-                     clock_t totalTicks, clock_t initialTabuTicks, clock_t globalTabuTicks, clock_t subQuboTicks);
+void print_delimited_output(
+    int maxNodes, int8_t *solution, long numPartCalls, double energy, parameters_t *param,
+    double totalTime, double initialTabuTime, double globalTabuTime, double subQuboTime);
 
 
 /* val[] --> Array to be sorted,

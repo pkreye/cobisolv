@@ -31,6 +31,8 @@ extern int Verbose_, TargetSet_, WriteMatrix_, Tlist_;
 extern char *outFileNm_, pgmName_[16], algo_[4];
 extern double Target_, Time_;
 
+extern int64_t seed;
+
 extern struct nodeStr_ *nodes_;
 extern struct nodeStr_ *couplers_;
 

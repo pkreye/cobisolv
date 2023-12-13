@@ -83,7 +83,9 @@ int main(int argc, char *argv[]) {
     Time_ = 2592000;  // the maximum runtime of the algorithm in seconds before timeout (2592000 = a month's worth of
                       // seconds)
     Tlist_ = -1;      // tabu list length  -1 signals go with defaults
-    int64_t seed = 17932241798878;
+
+    // int64_t seed = 17932241798878;  moved to param struct
+
     int errorCount = 0;
 
     static struct option longopts[] = {{"help", no_argument, NULL, 'h'},
@@ -205,7 +207,7 @@ int main(int argc, char *argv[]) {
                 exit(0);
                 break;
             case 'r':
-                seed = strtol(optarg, &chx, 10);  // sets the seed value
+                param.seed = strtol(optarg, &chx, 10);  // sets the seed value
                 break;
             case 'w':
                 WriteMatrix_ = true;
@@ -230,7 +232,7 @@ int main(int argc, char *argv[]) {
     }
     // options from command line complete
     //
-    srand(seed);
+    srand(param.seed);
 
     if (inFile == NULL) {
         fprintf(stderr,
