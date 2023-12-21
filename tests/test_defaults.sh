@@ -1,47 +1,71 @@
 #!/bin/bash
+qbsolv="../build/qbsolv"
 
-numProbs=10
-probName="bqp1000"
+numProbs=10;
+probSet="bqp1000";
+targetEnergies_bqp1000=(99 371438 354932 371236 370675 352760 359629 371193 351994 349337 351415);
 
-outfile_seq="./default_seq_${probName}.data";
-outfile_par2_reduction="./default_par2_reduction_${probName}.data";
-outfile_par2_critical="./default_par2_critical_${probName}.data";
-outfile_par4_reduction="./default_par4_reduction_${probName}.data";
-outfile_par4_critical="./default_par4_critical_${probName}.data";
-outfile_par2_loop="./default_par2_loop_${probName}.data";
-outfile_par2_loop_block="./default_par2_loop_${probName}_block.data";
-outfile_par2_loop_for="./default_par2_loop_${probName}_for.data";
+# function genOutfileName() {
+#     return "./${filePrefix}_time${1}s_seq_${probSet}.data"
+# }
 
-for i in $(seq 1 10); do
+# echo $(genOutfileName "test");
+# timings=("0.1" "0.5" "1" "2" "5" "10" "15" "30" "60")
+
+# echo "Timings: " ${timings[@]}
+
+# outfiles=();
+# for t in "${timings[@]}"
+# do
+#     outfiles+=($(genOutfileName $t))
+# done
+
+
+# qbsolv parameters
+qb_p=0;
+qb_g=1000;
+
+filePrefix="p${qb_p}g${qb_g}_target";
+outfile="./${filePrefix}_seq_${probSet}.data"
+
+numRuns=5
+outfileCount=0
+for i in $(seq 1 $numRuns); do
+    randNum1=$(eval "od -A n -t d -N 3 /dev/urandom")
+    randNum2=$(eval "od -A n -t d -N 3 /dev/urandom")
     for probNum in $(eval echo "{1..$numProbs}");
     do
-        infile="./qubos/${probName}_${probNum}.qubo";
+        infile="./qubos/${probSet}_${probNum}.qubo";
 
-        # seq="../build/qbsolv_seq -p 6500 -g 1700 -i $infile >> $outfile_seq";
+        commonArgs="-m -p $qb_p -g $qb_g -t 600 -T ${targetEnergies_bqp1000[$probNum]} -i $infile"
+
+        # seq="../build/qbsolv_seq $commonArgs >> $outfile_seq";
         # echo $seq;
         # eval $seq;
+        # outfileCount=0
+        # for t in "${timings[@]}"
+        # do
+        echo "$qbsolv -r $randNum1 $commonArgs >> $outfile";
 
-        # par2="../build/qbsolv_par2_reduction -p 6500 -g 1700 -i $infile >> $outfile_par2_reduction";
-        # echo $par2;
-        # eval $par2;
+        $qbsolv -r $randNum1 $commonArgs >> "$outfile" &
+        $qbsolv -r $randNum2 $commonArgs >> "$outfile" &
+        wait
 
-        # par2crit="../build/qbsolv_par2_critical -p 6500 -g 1700 -i $infile >> $outfile_par2_critical";
-        # echo $par2crit;
-        # eval $par2crit;
-
-        # par2loop="../build/qbsolv_par2_loop -p 6500 -g 1700 -i $infile >> $outfile_par2_loop";
-        # echo $par2loop;
-        # eval $par2loop;
-
-        par2loopf="../build/qbsolv_par2_loop_for -p 6500 -g 1700 -i $infile >> $outfile_par2_loop_for";
-        echo $par2loopf;
-        eval $par2loopf;
-
-        par2loopb="../build/qbsolv_par2_loop_block -p 6500 -g 1700 -i $infile >> $outfile_par2_loop_block";
-        echo $par2loopb;
-        eval $par2loopb;
-
-
-
+            # outfileCount=$(($outfileCount + 1))
+        # done
     done
 done
+
+cmd="cat ${outfile} | sed 's/^.*_//' | sed 's/\.qubo//' | sed 's/[[:space:]]\+/ /g' > ${outfile}.probnum"
+echo $cmd
+eval $cmd
+
+# for file in "${outfiles[@]}"
+# do
+#     cat "${file}.p1" >> "$file";
+#     cat "${file}.p2" >> "$file";
+
+#     cmd="cat ${file} | sed 's/^.*_//' | sed 's/\.qubo//' > ${file}.probnum"
+#     echo $cmd
+#     eval $cmd
+# done

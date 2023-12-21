@@ -190,7 +190,7 @@ int main(int argc, char *argv[]) {
                 TargetSet_ = true;
                 break;
             case 't':
-                Time_ = strtod(optarg, (char **)NULL);  // this sets the maximum runtime of the algorithm in seconds
+                Time_ = strtof(optarg, (char **)NULL);  // this sets the maximum runtime of the algorithm in seconds
                 break;
             case 'o':
                 if ((outFile_ = fopen(optarg, "w")) == NULL) {

@@ -648,6 +648,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
     double initialTabuTime = 0;
     double globalTabuTime = 0;
     double subQuboTime = 0;
+    double currentTime = 0;
 
     start_ = clock();
     bit_flips = 0;
@@ -668,27 +669,6 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
             solution_list[i][j] = 0;
         }
     }
-
-
-//     // <-- Test omp
-//     int nthreads = 2;
-//     omp_set_num_threads(nthreads);
-//     int i;
-//     int x = 0;
-// #pragma omp parallel
-//     {
-//         for (i = 0; i < 10; i++) {
-//             int id = omp_get_thread_num();
-//             printf("thread = %d, i = %d\n", id, i);
-//             #pragma omp critical
-//             x += 3;
-//         }
-//     }
-//     printf("x=%d\n", x);
-//     exit(1);
-//     // -->
-
-
 
     // get some memory for reduced sub matrices
     // int8_t  *sub_solution, *Qt_s, *Qbest;
@@ -730,10 +710,14 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
         }
         // printf("pre search IterMax: %d\n", IterMax);
 
-        startTime = omp_get_wtime();
-        energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,
-                             TargetSet_, index, 0);
-        initialTabuTime = omp_get_wtime() - startTime;
+        if (InitialTabuPass_factor == 0) {
+            energy = evaluate(solution, qubo_size, (const double **)qubo, flip_cost);
+        } else {
+            startTime = omp_get_wtime();
+            energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,
+                                 TargetSet_, index, 0);
+            initialTabuTime = omp_get_wtime() - startTime;
+        }
 
         // save best result
         best_energy = energy;
@@ -836,13 +820,10 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                 startTime = omp_get_wtime();
 
                  {  // scope of parallel region
-                    //printf("thread %d\n",omp_get_thread_num());
-
                     int t_change = 0;
                     int *Icompress;
                     if (GETMEM(Icompress, int, qubo_size) == NULL) BADMALLOC
 
-                    #pragma omp parallel for num_threads(4) reduction(+:change, numPartCalls, DwaveQubo)
                     for (l = 0; l < l_max; l += subMatrix) {
                         if (strncmp(&algo_[0], "o", strlen("o")) == 0) {
                             if (Verbose_ > 3) printf("Submatrix starting at backbone %d\n", l);
@@ -911,11 +892,15 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
         IterMax = bit_flips + TabuPass_factor * (int64_t)qubo_size;
         val_index_sort(index, flip_cost, qubo_size);  // Create index array of sorted values
 
-        startTime = omp_get_wtime();
-        energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,
-                             TargetSet_, index, 0);
-        globalTabuTime += omp_get_wtime() - startTime;
 
+        if (TabuPass_factor == 0) {
+            energy = evaluate(solution, qubo_size, (const double **)qubo, flip_cost);
+        } else {
+            startTime = omp_get_wtime();
+            energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,
+                                 TargetSet_, index, 0);
+            globalTabuTime += omp_get_wtime() - startTime;
+        }
 
         val_index_sort(index, flip_cost, qubo_size);  // Create index array of sorted values
 
@@ -984,10 +969,11 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
             }
         }
 
+        currentTime = omp_get_wtime() - initialStartTime;
         // timeout test
-        if (CPSECONDS >= Time_) {
+        if (currentTime >= Time_) {
             ContinueWhile = false;
-            printf("Terminated due to time constraint: CPSECONDS: %f, Time max: %f\n", CPSECONDS, Time_);
+            if (Verbose_ > 1) printf("Terminated due to time constraint: CPSECONDS: %f, Time max: %f\n", CPSECONDS, Time_);
         }
     }  // end of outer loop
 
@@ -999,11 +985,11 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
         best_energy = energy_list[Qindex[0]];
         // printf(" evaluated solution %8.2lf\n",
         //     sign * Simple_evaluate(Qbest, qubo_size, (const double **)qubo));
-        double totalTime = omp_get_wtime() - initialStartTime;
+        currentTime = omp_get_wtime() - initialStartTime;
 
         print_delimited_output(
             qubo_size, Qbest, numPartCalls, best_energy * sign,  param,
-            totalTime, initialTabuTime, globalTabuTime, subQuboTime
+            currentTime, initialTabuTime, globalTabuTime, subQuboTime
         );
     }
 
