@@ -36,11 +36,11 @@ def read_data_file(fileName):
 # def graph_cumulative(data):
 #     return
 
-def process_data(data, solvedCondition, globalSearchFactorFilter, useCondition=False):
+def process_data(data, globalSearchFactorFilter, solvedCondition=1):
     tts = {}
     runTimes = {}
     solvedCount = {}
-    solvedCondCount = {}
+
     numRuns = 0
 
     prevProbNum = 1
@@ -49,6 +49,7 @@ def process_data(data, solvedCondition, globalSearchFactorFilter, useCondition=F
     probSetTimes = []
     curProbTime = 0
 
+    curProbSolved = False
     for row in data:
         numRuns += 1
 
@@ -58,8 +59,24 @@ def process_data(data, solvedCondition, globalSearchFactorFilter, useCondition=F
         energy = row[3]
         finalTime = row[4]
 
+        #print("row {}".format(row))
         if preSearchFactor != 0 or globalSearchFactor != globalSearchFactorFilter:
             # filter data based on search params
+            #print("Continue: filter")
+            continue
+
+        if probNum != prevProbNum:
+            # starting runs of new problem
+            curProbSolved = False
+            if probNum == 1 and prevProbNum > 1:
+                # we've finished the set of problems and are starting the next iteration of the set
+                try:
+                    probSetTimes.append(sum([probTimes[k][-1] for k in probTimes]))
+                except:
+                    print("Incomplete solution set for condition {}.\n probTimes: {}".format(solvedCondition, probTimes))
+
+        if curProbSolved:
+            #print("Continue: solution condition")
             continue
 
         # initialize result tables
@@ -73,44 +90,35 @@ def process_data(data, solvedCondition, globalSearchFactorFilter, useCondition=F
         if probNum not in solvedCount:
             solvedCount[probNum] = 0
 
-        if probNum not in solvedCondCount:
-            solvedCondCount[probNum] = 0
-
-        #
+        # Track time to solution, cumulative and individual
 
         if probNum == prevProbNum:
             curProbTime += finalTime
         else:
-            probTimes[prevProbNum].append(curProbTime)
+            # moving on to next problem, reinitialize curProbTime
             curProbTime = finalTime
-            if probNum == 1 and prevProbNum > 1:
-                # we've finished the problem set and are starting the next run
-                probSetTimes.append(sum([probTimes[k][-1] for k in probTimes]))
 
         # Add data to result tables
-
         runTimes[probNum].append(finalTime)
 
-        if energy == TARGET_ENERGIES[probNum - 1]:
+        if energy >= solvedCondition * TARGET_ENERGIES[probNum - 1]:
             solvedCount[probNum] += 1
+            curProbSolved = True
+            probTimes[prevProbNum].append(curProbTime)
             if probNum not in tts:
                 tts[probNum] = []
             tts[probNum].append(finalTime)
 
-        if energy >= solvedCondition * TARGET_ENERGIES[probNum - 1]:
-            solvedCondCount[probNum] += 1
         prevProbNum = probNum
     # TODO Clean up this whole mess..
     # for now.. don't forget the final problem..
     probTimes[prevProbNum].append(curProbTime)
     curProbTime = finalTime
-    if probNum == 1 and prevProbNum > 1:
-        # we've finished the problem set and are starting the next run
-        probSetTimes.append(sum([probTimes[k][-1] for k in probTimes]))
+    probSetTimes.append(sum([probTimes[k][-1] for k in probTimes]))
 
-    return tts, solvedCount, solvedCondCount, runTimes, probTimes, probSetTimes
+    return tts, solvedCount, runTimes, probTimes, probSetTimes
 
-def graph_cumulativeAvgTime(probTimes, problemSetName, filePrefix, globalSearchParam, outdir, show=False):
+def graph_cumulativeAvgTime(probTimes, globalSearchParam, filePrefix, problemSetName, outdir, show=False, save=False):
     xdata = []
     ydata = []
     cumulativeTime = 0
@@ -127,19 +135,29 @@ def graph_cumulativeAvgTime(probTimes, problemSetName, filePrefix, globalSearchP
         count += 1
 
     p = sns.lineplot(x=xdata, y=ydata)
-    plt.title("{} (global search factor: {})".format(problemSet, globalSearchParam))
+
+    if solvedCond != 1:
+        plt.title("{} Avg (Global search factor: {}, Solved Condition: {})".format(problemSet, globalSearchParam, solvedCond))
+    else:
+        plt.title("{} Avg (global search factor: {})".format(problemSet, globalSearchParam))
+
     plt.xlabel("Total time (seconds)")
     plt.ylabel("Fraction Solved")
 
     if show:
         plt.show()
 
-    outfile = "{}/{}_{}_p0g{}.png".format(outdir, filePrefix, problemSet, globalSearchParam)
-    print("Saving figure to {}".format(outfile))
-    plt.savefig(outfile)
+    if save:
+        if solvedCond != 1:
+            outfile = "{}/{}_{}_cumulative_avg_p0g{}_cond{}.png".format(outdir, filePrefix, problemSet, globalSearchParam, solvedCond)
+        else:
+            outfile = "{}/{}_{}_cumulative_avg_p0g{}.png".format(outdir, filePrefix, problemSet, globalSearchParam)
+        print("Saving figure to {}".format(outfile))
+        plt.savefig(outfile)
+    plt.clf()
     return
 
-def graph_cumulativeProblemSetTime(probTimes, problemSetName, filePrefix, globalSearchParam, outdir, show=False):
+def graph_cumulativeProblemSetTime(probTimes, globalSearchParam, filePrefix, problemSetName, outdir, show=False, save=False):
     pivotTimes = []
 
     numSets = None
@@ -175,21 +193,28 @@ def graph_cumulativeProblemSetTime(probTimes, problemSetName, filePrefix, global
 
         print("xdata {}, \nydata {}".format(xdata, ydata))
         p = sns.lineplot(x=xdata, y=ydata)
-        plt.title("{} (global search factor: {}, run: {})".format(problemSet, globalSearchParam, probSetCount))
+
+        if solvedCond != 1:
+            plt.title("{} Run {} (Global search factor: {}, Solved Condition: {})".format(probSetCount, problemSet, globalSearchParam, solvedCond))
+        else:
+            plt.title("{} Run {} (global search factor: {})".format(probSetCount, problemSet, globalSearchParam))
+
         plt.xlabel("Total time (seconds)")
         plt.ylabel("Fraction Solved")
 
         if show:
             plt.show()
 
-        outfile = "{}/{}_{}_cumulative_p0g{}_{}.png".format(outdir, filePrefix, problemSet, globalSearchParam, probSetCount)
-        print("Saving figure to {}".format(outfile))
-        plt.savefig(outfile)
+        if save:
+            if solvedCond != 1:
+                outfile = "{}/{}_{}_cumulative_p0g{}_cond{}_{}.png".format(outdir, filePrefix, problemSet, globalSearchParam, solvedCond, probSetCount)
+            else:
+                outfile = "{}/{}_{}_cumulative_p0g{}_{}.png".format(outdir, filePrefix, problemSet, globalSearchParam, probSetCount)
+            print("Saving figure to {}".format(outfile))
+            plt.savefig(outfile)
         plt.clf()
 
         probSetCount += 1
-
-
     return
 
 if __name__ == "__main__":
@@ -200,13 +225,13 @@ if __name__ == "__main__":
 
     colors = sns.color_palette()
 
-    solvedCond = 0.9999
+    solvedCond = 0.99
 
     data = read_data_file(inputFile)
 
     for globalSearchParam in [50, 100, 1000]:
         print("Global search param: {}".format(globalSearchParam))
-        tts, solvedCount, solvedCondCount, runTimes, probTimes, probSetTimes = process_data(data, solvedCond, globalSearchParam)
+        tts, solvedCount, runTimes, probTimes, probSetTimes = process_data(data, globalSearchParam)
 
         print("Problem Times:\n")
         for k in probTimes:
@@ -226,16 +251,15 @@ if __name__ == "__main__":
             runTimeAvgs[probNum] = sum(runTimes[probNum]) / len(runTimes[probNum])
 
         totalSolved = 0
-        totalCondSolved = 0
         for probNum in solvedCount:
             totalSolved += solvedCount[probNum]
-            totalCondSolved += solvedCondCount[probNum]
 
-            print("problem {}, average run time {}".format(
+            print("problem {}, solved condition {}, average run time {}".format(
                 probNum,
+                solvedCond,
                 runTimeAvgs[probNum]
             ))
 
 
-        # xdata, ydata = cumulativeAvgTime(probTimes)
-        graph_cumulativeProblemSetTime(probTimes, problemSet, filePrefix, globalSearchParam, outdir, show=False)
+        graph_cumulativeAvgTime(probTimes, problemSet, filePrefix, globalSearchParam, outdir, show=True, save=False)
+        graph_cumulativeProblemSetTime(probTimes, problemSet, filePrefix, globalSearchParam, outdir, show=True, save=False)
