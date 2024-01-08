@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 
+set(CMAKE_TOOLCHAIN_FILE /home/panta/projects/qbsolv/Toolchain-RasberryPi.cmake)
+
 project(qbsolv)
 # set(VERSION_MAJOR 2)
 # set(VERSION_MINOR 5)
