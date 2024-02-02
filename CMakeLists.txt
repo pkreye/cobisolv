@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 3.0)
+  cmake_minimum_required(VERSION 3.0)
 
-set(CMAKE_TOOLCHAIN_FILE /home/panta/projects/qbsolv/Toolchain-RasberryPi.cmake)
+# set(CMAKE_TOOLCHAIN_FILE /home/panta/projects/qbsolv/Toolchain-RasberryPi.cmake)
 
 project(qbsolv)
 # set(VERSION_MAJOR 2)
@@ -22,22 +22,26 @@ if(MSVC)
 endif(MSVC)
 
 if(CMAKE_C_COMPILER_ID MATCHES GNU OR CMAKE_C_COMPILER_ID MATCHES Clang)
-    set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -std=gnu99 -fopenmp")
+    set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -std=gnu99 -lpigpio")
     set(CMAKE_C_FLAGS_DEBUG   "-O0 -g3")
     set(CMAKE_C_FLAGS_RELEASE "-O3")
 endif()
 
 if(CMAKE_CXX_COMPILER_ID MATCHES GNU OR CMAKE_CXX_COMPILER_ID MATCHES Clang)
-    set(CMAKE_CXX_FLAGS         "${CMAKE_CXX_FLAGS} -Wall -Wextra -std=gnu++11 -fopenmp")
+    set(CMAKE_CXX_FLAGS         "${CMAKE_CXX_FLAGS} -Wall -Wextra -std=gnu++11 -lpigpio")
     set(CMAKE_CXX_FLAGS_DEBUG   "-O0 -g3")
     set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 endif()
 
 # location of header files
-include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/cmd)
+include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include
+${PROJECT_SOURCE_DIR}/cmd /home/foobar/tools/pigpio)
+
+#
+link_directories(/home/foobar/tools/pigpio)
 
 # static library
-add_library(libqbsolv STATIC src/solver.cc src/util.cc src/dwsolv.cc)
+add_library(libqbsolv STATIC src/solver.cc src/util.cc src/dwsolv.cc src/ising.cc)
 set_target_properties(libqbsolv PROPERTIES PREFIX "")
 
 if(QBSOLV_BUILD_CMD)

@@ -1,17 +1,29 @@
-// #include "extern.h"  // qubo header file: global variable declarations
-// #include "macros.h"
-
 #include "ising.h"
 
+
+#include "extern.h"  // qubo header file: global variable declarations
+#include "macros.h"
+
+// #include "ising_graph_helper.h"
+// #include "extern.h"  // qubo header file: global variable declarations
+// #include "macros.h"
 // #include "ising_graph_helper.h"
 
 #include <pigpio.h>
 
+#include <stdbool.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+
+#include <time.h>
+
 
 #ifdef __cplusplus
-// extern "C" {
+extern "C" {
 #endif
+
 #define WL_DELAY         0.00001
 #define SCAN_CLK_DELAY   0.000001
 #define NUM_OF_NODES     100
@@ -45,46 +57,103 @@
 #define ROW_ADDR_0  20
 #define ROW_ADDR_4  21
 
-const int ROW_ADDR[6] = {
+const int ROW_ADDRS[6] = {
     ROW_ADDR_0, ROW_ADDR_1,
     ROW_ADDR_2, ROW_ADDR_3,
     ROW_ADDR_4, ROW_ADDR_5
 };
 
-const int COL_ADDR[6] = {
+const int COL_ADDRS[6] = {
     COL_ADDR_0, COL_ADDR_1,
     COL_ADDR_2, COL_ADDR_3,
     COL_ADDR_4, COL_ADDR_5
 };
 
-const int WEIGHT[6] = {
+const int WEIGHTS[6] = {
     WEIGHT_0, WEIGHT_1,
     WEIGHT_2, WEIGHT_3,
     WEIGHT_4, WEIGHT_5
 };
 
+const int NUM_GROUPS = 59;
+const int COBIFIXED65_BASEGROUPS[59] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10,11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61};
 
 // Misc utility functions
 
+int usleep(long usecs)
+{
+   struct timespec rem;
+   struct timespec req= {
+       (int)(usecs / 1000000),
+       (usecs % 1000000) * 1000
+   };
+
+   return nanosleep(&req , &rem);
+}
 
 int _rand_int_normalized()
 {
-// generate random int normalized to -14 to 14
+// generate random int normalized to -7 to 7
+//
     if (rand() % 2 == 1) {
-        return rand() % 15;
+        return rand() % 8;
     } else {
-        return -1 * (rand() % 15);
+        return -1 * (rand() % 8);
     }
 }
 
-int **_gen_rand_array2d(int w, int h)
+int *_intdup(int *a, size_t len)
+{
+    int *new_array = malloc(sizeof(int) *  len);
+    if (new_array == NULL) {
+        fprintf(stderr, "Bad malloc: %s %s:%d", __FUNCTION__, __FILE__, __LINE__);
+    }
+
+    memcpy(new_array, a, sizeof(int) * len);
+    return new_array;
+}
+
+int *_malloc_array1d(int len)
+{
+    int* a = malloc(sizeof(int *) * len);
+    if (a == NULL) {
+        fprintf(stderr, "Bad malloc %s %s:%d\n", __FUNCTION__, __FILE__, __LINE__);
+        exit(1);
+    }
+
+    int i;
+    for (i = 0; i < len; i++) {
+        a[i] = 0;
+    }
+
+    return a;
+}
+
+int **_malloc_array2d(int w, int h)
 {
     int** a = malloc(sizeof(int *) * w);
+    if (a == NULL) {
+        fprintf(stderr, "Bad malloc %s %s:%d\n", __FUNCTION__, __FILE__, __LINE__);
+        exit(1);
+    }
 
     int i, j;
     for (i = 0; i < w; i++) {
         a[i] = malloc(sizeof(int) * h);
+        for (j = 0; j < h; j++) {
+            a[i][j] = 0;
+        }
+    }
 
+    return a;
+}
+
+int **_gen_rand_array2d(int w, int h)
+{
+    int** a = _malloc_array2d(w, h);
+
+    int i, j;
+    for (i = 0; i < w; i++) {
         for (j = 0; j < h; j++) {
             a[i][j] = _rand_int_normalized();
         }
@@ -92,6 +161,31 @@ int **_gen_rand_array2d(int w, int h)
 
     return a;
 }
+
+void _free_array2d(int **a, int w) {
+    int i;
+    for (i = 0; i < w; i++) {
+        free(a[i]);
+    }
+    free(a);
+}
+
+int **_array2d_dup(int **m, int w, int h)
+{
+    int **result = _malloc_array2d(w, h);
+
+    int i, j;
+    for (i = 0; i < w; i++) {
+        for (j = 0; j < h; j++) {
+            result[i][j] = m[i][j];
+        }
+    }
+
+    return result;
+}
+
+
+
 
 void binary_splice_rev(int num, int *bin_list)
 {
@@ -105,6 +199,28 @@ void binary_splice_rev(int num, int *bin_list)
 }
 
 // ising subproblem solver
+
+typedef struct IsingData {
+    size_t probSize;
+    size_t w;
+    size_t  h;
+    int **programming_bits;
+    uint8_t *chip2_test;
+    /* uint8_t *samples; */
+} IsingData;
+
+
+IsingData *ising_data_mk(size_t size)
+{
+    IsingData *d = malloc(sizeof(IsingData));
+    probSize = size;
+    d->w = 64;
+    d->h = 64;
+    d->programming_bits = _malloc_array2d(d->w, d->h);
+    d->chip2_test = malloc(sizeof(uint8_t) * 504);
+    return d;
+}
+
 
 int ising_gpio_setup()
 {
@@ -149,13 +265,13 @@ void ising_weight_pins_low()
         gpioWrite(WEIGHT_5, PI_LOW);
 }
 
-void ising_set_addr(int *addrs, int *bin_num_list)
+void ising_set_addr(const int *addrs, int *bin_num_list)
 {
     int addr_name;
     int i;
     for (i = 0; i < 6; i++) {
         addr_name = addrs[i];
-        if (bin_num_list == 1) {
+        if (bin_num_list[i] == 1) {
             gpioWrite(addr_name, PI_HIGH);
         } else {
             gpioWrite(addr_name, PI_LOW);
@@ -180,7 +296,7 @@ void ising_program_weights(int **programming_bits)
     ising_weight_pins_low();
     gpioWrite(ALL_ROW_HI, PI_LOW);
 
-    // run through each row of 64x64 cells in COBI/COBIFREEZE
+    // # run through each row of 64x64 cells in COBI/COBIFREEZE
     int x = 0;
     int y = 0;
     for (x = 0; x < 64; x++) { // #run through each row of 64x64 cells in COBI/COBIFREEZE
@@ -189,14 +305,14 @@ void ising_program_weights(int **programming_bits)
             binary_splice_rev(y, bin_col_list);
             binary_splice_rev(programming_bits[x][y], bin_weight_list);
 
-            ising_set_addr(ROW_ADDR, bin_row_list); // #assign the row number
-            ising_set_addr(COL_ADDR, bin_col_list); // #assign the column number
+            ising_set_addr(ROW_ADDRS, bin_row_list); // #assign the row number
+            ising_set_addr(COL_ADDRS, bin_col_list); // #assign the column number
 
             gpioWrite(enable_pin_name, PI_HIGH);
 
             // #set weight of 1 cell
-            ising_set_addr(WEIGHT, bin_weight_list); // #assign the weight corresponding to current cell
-            // # time.sleep(.001)  # Delay removed since COBIFIXED65 board does not have any level shifters which causes additional signal delay
+            ising_set_addr(WEIGHTS, bin_weight_list); // #assign the weight corresponding to current cell
+            // # time.sleep(.001) # Delay removed since COBIFIXED65 board does not have any level shifters which causes additional signal delay
             gpioWrite(enable_pin_name, PI_LOW);
             ising_weight_pins_low(); // #reset for next address
         }
@@ -207,91 +323,331 @@ void ising_program_weights(int **programming_bits)
     }
 }
 
-double ising_cal_energy_ham() //# cal_energy_ham(self, size, graph_input_file)
+
+/* int ising_cal_energy_ham() //# cal_energy_ham(self, size, graph_input_file) *\/ */
+/* { */
+/*     // TODO finish */
+/*     // directly implement functionality of graph_helper.qubo_solve_file here */
+
+/*     /\*     num_groups = len(groups) *\/ */
+/*     /\* int ** arr = _malloc_array2d(64, 64); *\/ */
+
+/*     /\* arr = import_graph(arr,infile) *\/ */
+/*     /\* h,j = {},{} *\/ */
+
+/*     /\* for x in range(num_groups): *\/ */
+/*     /\*     for y in range(x+1,num_groups): *\/ */
+/*     /\*         w = 0 *\/ */
+/*     /\*         for x_i in groups[x]: *\/ */
+/*     /\*             for y_i in groups[y]: *\/ */
+/*     /\*                 w = w + arr[62-x_i,y_i+1] + arr[62-y_i,x_i+1] *\/ */
+/*     /\*         if w != 0: *\/ */
+/*     /\*             j[(x,y)] = -w *\/ */
+
+/*     /\* response = QBSolv().sample_ising(h,j, timeout=180) *\/ */
+/*     /\* list(response.samples()) *\/ */
+/*     if(Verbose_ > 0) { */
+/*         /\* print("Tabu search Hamilitonian Values (5 best values)=" + str(list(response.data_vectors['energy'][:5]))); *\/ */
+/*     } */
+
+/*     /\* minenergy = np.min(response.data_vectors['energy']) *\/ */
+/*     int minenergy = 0; */
+/*     return minenergy; */
+
+/* } */
+
+int **ising_gh_read_spins(IsingData *ising_data, int num_samples)
 {
-    // TODO
+    // chip_data_len must equal 63*7 == 441
+    int const chip_data_len = 441;
+    int **sample_data = _malloc_array2d(num_samples, 63);
+    int **excess_0s = _malloc_array2d(num_samples, 63);
+    int **spins = _malloc_array2d(num_samples, NUM_GROUPS);
+
+    int bit_index = 0;
+    int num_index = 0;
+    int sample_index = 0;
+    int cur_val = 0;
+
+    for (sample_index = 0; sample_index < num_samples; sample_index++) {
+        num_index = 0;
+        for (bit_index = 0; bit_index < chip_data_len; bit_index++) {
+            if (ising_data->chip2_test[bit_index] == 0) {
+                excess_0s[sample_index][num_index]++;
+            } else {
+                excess_0s[sample_index][num_index]--;
+            }
+
+            if (bit_index % 7 == 0 && bit_index > 0) {
+                sample_data[sample_index][num_index] = cur_val;
+                num_index++;
+
+                cur_val = ising_data->chip2_test[bit_index];
+            } else {
+                cur_val = (cur_val << 1) + ising_data->chip2_test[bit_index];
+            }
+        }
+    }
+
+    int g;
+    for (g = 0; g < NUM_GROUPS; g++) {
+        num_index = COBIFIXED65_BASEGROUPS[g];
+        for (sample_index = 0; sample_index < num_samples; sample_index++) {
+            spins[sample_index][g] += excess_0s[sample_index][num_index];
+        }
+    }
+
+    for (sample_index = 0; sample_index < num_samples; sample_index++) {
+        for (num_index = 0; num_index < NUM_GROUPS; num_index++) {
+            if (spins[sample_index][num_index] <= 0) {
+                spins[sample_index][num_index] = -1;
+            } else {
+                spins[sample_index][num_index] = 1;
+            }
+        }
+    }
+
+    _free_array2d(sample_data, num_samples);
+    _free_array2d(excess_0s, num_samples);
+    return spins;
 }
 
-double ising_cal_energy()
-// #cal_energy(self, sample_bits, size, sample_index, ising_data_array, sample_times, graph_problem_file,verbose=True, return_spins=False,store_time=[]):
+/* _outer_prod
+
+   Assumes `result` has dimensions (`len_a`, `len_b`).
+ */
+void _outer_prod(int *a, size_t len_a, int *b, size_t len_b, int **result)
 {
-    int i = 0;
+    int i, j;
 
-    // chip_file_name="run_files/chip2_test.txt";
-    // all_samples_chip2 = np.zeros((504), dtype=np.int8);
-    int all_samples_chip2[504];
+    for (i = 0; i < len_a; i++) {
+        for (j = 0; j < len_b; j++) {
+            result[i][j] = a[i] * b[j];
+        }
+    }
+}
 
+void _scalar_mult(int *a, size_t len, int scalar)
+{
+    int i;
+    for (i = 0; i < len; i++) {
+        a[i] = a[i] * scalar;
+    }
+}
+
+/* _transpose
+
+   Returns newly allocated 2d array containing the result.
+ */
+int **_transpose(int **a, int w, int h)
+{
+    int **result = _malloc_array2d(h, w);
+
+    int i, j;
+    for (i = 0; i < w; i++) {
+        for (j = 0; j < h; j++) {
+            result[j][i] = a[i][j];
+        }
+    }
+
+    return result;
+}
+
+/* Element-wise addition of 2 2D arrays. Result stored in first array. */
+void _add_array2d(int **a, int **b, int w, int h)
+{
+    int i, j;
+    for (i = 0; i < w; i++) {
+        for (j = 0; j < h; j++) {
+            a[i][j] += b[i][j];
+        }
+    }
+}
+
+int **_matrix_mult(int **a, int a_w, int a_h, int **b, int b_h)
+{
+    // b is assumed to have dimensions (a_h, b_h)
+    int b_w = a_h;
+
+    int **result = _malloc_array2d(a_w, b_h);
+
+    int i, j, k;
+    for(i = 0; i < a_w; i++) { // each row of a
+        for(j = 0; j < b_h; j++) { // each col in b
+            result[i][j] = 0;
+            for(k = 0; k < a_h; k++) { // each col a
+                result[i][j] += a[i][k] * b[k][j];
+            }
+        }
+    }
+
+    return result;
+}
+
+// Elementwise multiplication of 2D arrays
+int **_array2d_element_mult(int **a, int **b, int w, int h)
+{
+    int **result = _malloc_array2d(w, h);
+
+    int i, j;
+    for (i = 0; i < w; i++) {
+        for (j = 0; j < h; j++) {
+            result[i][j] = a[i][j] * b[i][j];
+        }
+    }
+
+    return result;
+}
+
+int ising_simple_descent(int *spins, int **weights)
+{
+    // Assumption: NUM_GROUPS == len(weights) == len(weights[i]) == len(spins)
+    int size = NUM_GROUPS;
+
+    int *neg_spins = _intdup(spins, size);
+    _scalar_mult(neg_spins, size, -1);
+
+    int **cross = _malloc_array2d(size, size);
+    _outer_prod(spins, size, neg_spins, size, cross);
+
+    // # prod = cross * (weights+weights.transpose())
+    int **wt_transpose = _transpose(weights, size, size);
+    // add weights to wt_transpose, storing result in wt_transpose
+    _add_array2d(wt_transpose, weights, size, size);
+    int **prod = _array2d_element_mult(cross, wt_transpose, size, size);
+
+    // # diffs = np.sum(prod,0)
+    int *diffs = _malloc_array1d(size);
+    int i, j;
+    // Column-wise sum
+    for (i = 0; i < size; i++) {
+        diffs[i] = 0;
+        for (j = 0; j < size; j++) {
+            diffs[i] += prod[j][i];
+        }
+    }
+
+    for (i = 0; i < size; i++) {
+        if (diffs[i] < 0) {
+            spins[i] *= -1;
+
+            // TODO fix recursive structure...
+            free(neg_spins);
+            _free_array2d(cross, size);
+            _free_array2d(wt_transpose, size);
+            _free_array2d(prod, size);
+            free(diffs);
+
+            return ising_simple_descent(spins, weights);
+        }
+    }
+
+    int ham = 0;
+    for (i = 0; i < size; i++) {
+        for (j = 0; j < size; j++) {
+            ham = ham + spins[i] * spins[j] * weights[i][j];
+        }
+    }
+
+    // TODO fix recursive structure...
+    free(neg_spins);
+    _free_array2d(cross, size);
+    _free_array2d(wt_transpose, size);
+    _free_array2d(prod, size);
+    free(diffs);
+
+    return ham;
+}
+
+
+void ising_gh_cal_energy_direct(int **spins, int num_samples, int **weights, int *hamiltonians)
+{
+    // Should hold: num_samples == len(spins) and NUM_GROUPS == len(weights)
+    int ham = 0;
+
+    // implementing only the `descend == True` path in original code
+    /* if descend: */
+    int i;
+    for (i = 0; i < num_samples; i++) {
+        ham = ising_simple_descent(spins[i], weights);
+        hamiltonians[i] = ham;
+    }
+}
+
+void ising_gh_cal_energy(IsingData *ising_data, int num_samples, int *hamiltonians)
+{
+    // TODO move to global BASEGROUPS in place of passing group param
+    int **spins = ising_gh_read_spins(ising_data, num_samples);
+
+    /* weights = np.zeros((num_groups,num_groups),dtype=np.int8) */
+    int **weights = _malloc_array2d(NUM_GROUPS, NUM_GROUPS);
+
+    /* graph_arr = np.zeros((64,64),dtype=np.int8) */
+    /* graph_arr = import_graph(graph_arr,graph_file) */
+    /* int **graph_arr = all_to_all_graph_write_0; */
+
+    int x, y, i, j;
+    for (x = 0; x < NUM_GROUPS; x++) {
+        for (y = x + 1; y < NUM_GROUPS; y++){
+            /* for i in groups[x]: */
+            /*     for j in groups[y]: */
+            i = COBIFIXED65_BASEGROUPS[x];
+            j = COBIFIXED65_BASEGROUPS[y];
+
+            weights[x][y] -= (all_to_all_graph_write_0[62-i][j+1] +
+                              all_to_all_graph_write_0[62-j][i+1]);
+        }
+    }
+
+    /* return cal_energy_direct(spins,weights,descend,return_spins) */
+    ising_gh_cal_energy_direct(spins, num_samples, weights, hamiltonians);
+}
+
+// ising_data_array is not used
+int ising_cal_energy(IsingData *ising_data)
+{
+    /* #if sample_index%3==0: */
     gpioWrite(ROSC_EN, PI_LOW);
     gpioWrite(ROSC_EN, PI_HIGH);
 
-    // TODO Do we need an arbitrary delay here?
-    //py:for i in range (2500):
-    //py:    pass
+    usleep(100);
 
-    // #print("--- %s seconds ---" % (time.time() - start_time))
-    // #store_time.append(time.time() - start_time)
-    // #print("--- %s seconds ---" % (time.time() - self.start_time))
     gpioWrite(SAMPLE_CLK, PI_HIGH);
-    // #time.sleep(0.0001)
+        /* #time.sleep(0.0001) */
+    usleep(100);
     gpioWrite(SAMPLE_CLK, PI_LOW);
 
-    int bit;
+    int bit = 0;
     for (bit = 0; bit < 441; bit++) {
-        if (gpioRead(SCANOUT_DOUT64_CHIP2 == 1)) {
-            all_samples_chip2[bit] = 1;
+        /*     # if (sample == 1) and (bit < 64): */
+        /*     #     print(GPIO.input(scanout_dout64_chip1)) */
+        if (gpioRead(SCANOUT_DOUT64_CHIP2) == 1) {
+            ising_data->chip2_test[bit] = 1;
+
         } else {
-            all_samples_chip2[bit] = 0;
+            ising_data->chip2_test[bit] = 0;
         }
 
-        if (bit == 440) break;
+        if (bit == 440) {
+            break;
+        }
 
         gpioWrite(SCANOUT_CLK, PI_HIGH);
         gpioWrite(SCANOUT_CLK, PI_LOW);
     }
 
-    // with open(chip_file_name, 'w') as f2:
-    //     count_node_rows = 0
-    //     for bit in range(441):
-    //         if (bit % 7) == 0:
-    //             f2.write('node ')
-    //             f2.write(str((62 - (count_node_rows))))
-    //             f2.write(':')
-    //             f2.write('\n')
-    //             count_node_rows = count_node_rows + 1
 
-    //         f2.write(str(all_samples_chip2[bit]))
-
-    //         if bit == 440:
-    //             break
-
-    //         f2.write('\n')
-    //         if (bit % 7)==6:
-    //             f2.write('\n')
-    //     f2.write('\n')
-
-    int input_graph_array_chip1[101][101];
-    // input_graph_array_chip1 = self.import_graph(input_graph_array_chip1, graph_problem_file)
-
-    // ham_solution, majority_vote_array = graph_helper.cal_energy(graph_helper.cobifixed65_basegroups,1,self.selected_file,"run_files/chip2_test.txt",True,True)
-    // ham_solution = ham_solution[0]
-    // majority_vote_array = majority_vote_array[0]
-    // acc = ham_solution/float((self.energy_ham))*100
-
-    if(Verbose_ > 1) { // # calculate chip accuracy
-    //     #print("Computed Hamiltonian for sample = " + str(ham_solution))
-        printf("Hamiltonian of current sample = " + str(round(acc,2)) + "%\t", end="");  // # print chip accuracy
-    //     #print("Spin Values (Ascending): " + str(majority_vote_array[0:size])+ '\n')
-    }
+    int num_samples = 1;
+    /* int *hamiltonians = malloc(sizeof(double) * num_samples); */
+    int hamiltonian = 0;
+    ising_gh_cal_energy(ising_data, num_samples, &hamiltonian);
 
 
-    if (!return_spins) {
-        return round(acc,2);
-    } else {
-        return round(acc,2), majority_vote_array;
-    }
+    // TODO add majority voting thing..
+    return hamiltonian;
 }
 
-void ising_modify_array_for_pins(int **initial_array, int  **final_array, int problem_size)
+void ising_modify_array_for_pins(int initial_array[64][64], int  **final_pin_array, int problem_size)
 {
     int total_0_rows = 63 - problem_size;
 
@@ -349,6 +705,7 @@ void ising_modify_array_for_pins(int **initial_array, int  **final_array, int pr
             } else if (integer_pin == -8) {
                 final_pin_array[x][y] = 0b111110;     // # load the strong negative coupling to the final_array
             } else { // # integer_pin == 7
+                // TODO rectify value in comment with actual value being assigned
                 if (y == y_diag) { // #along diagonal
                     final_pin_array[x][y] = 0b001111; // # load value of 31.0 to final_array
                 } else {
@@ -370,31 +727,22 @@ void ising_modify_array_for_pins(int **initial_array, int  **final_array, int pr
             }
         }
     }
-
-    return final_pin_array;
+    /* return final_pin_array; */
 }
 
-// void ising_bit_stream_generate_adj(adj,i)
-//     input_graph = graph_helper.realize_weights(graph_helper.cobifixed65_basegroups,adj)
-//     input_graph = graph_helper.add_shil(input_graph,4)
-//     input_graph = graph_helper.add_calibration(input_graph,"./calibration/cals.txt")
-//     create_graph.write_prog_from_matrix(input_graph,i)
-//     self.selected_file = "run_files/all_to_all_graph_write_%i.txt" %i
-//     self.programming_bits = self.modify_array_for_pins(input_graph,np.zeros((64,64),dtype=np.int8),6
-
 // py: cobifixed65_rpi::test_multi_times
-void ising_test_multi_times(int sample_times)
-//(self, sample_times, sample_bits, size, graph_problem_file,verbose=True,return_spins = False)
+int *ising_test_multi_times(IsingData *ising_data, int sample_times, int sample_bits, int size)
 {
-    ising_program_weights(/* TODO: how to pass around "py:self.program_weights" */);
+    ising_program_weights(ising_data->programming_bits);
 
     int times = 0;
-    double *all_results = [];
-    double cur_best = 0;
-    double res;
+    int *all_results = _malloc_array1d(sample_times);
+    int cur_best = 0;
+    int res;
 
-    ising_cal_energy_ham(size, graph_problem_file) //# calculate Qbsolv energy once
-    // ising_data_array = np.zeros((400,sample_times), dtype=np.int8)
+    /* int energy_ham = ising_cal_energy_ham(...); //# calculate Qbsolv energy once */
+    int energy_ham = 0;
+    /* int **ising_data_array = _malloc_array2d(400,sample_times); */
 
     gpioWrite(ALL_ROW_HI, PI_HIGH);
     gpioWrite(SCANOUT_CLK, PI_LOW);
@@ -402,17 +750,25 @@ void ising_test_multi_times(int sample_times)
     gpioWrite(WEIGHT_EN, PI_LOW);
 
     while (times < sample_times) {
-        res = ising_cal_energy(sample_bits, size, times, ising_data_array, sample_times, graph_problem_file,verbose,return_spins);  //# calculate H energy from chip data
-        if (res != None) {
-            all_results.append(res);
-            times += 1;
-            // TODO: track cur_best
+        if (Verbose_ > 0) {
+            printf("\nSample number %d", times);
         }
+        res = ising_cal_energy(ising_data);  //# calculate H energy from chip data
+
+        all_results[times] = res;
+
+        if (res < cur_best) {
+            cur_best = res;
+            // TODO track accuracy and spins
+        }
+
+        times += 1;
+
+        // TODO: track cur_best
 
         if (Verbose_ > 0) {
-            printf(", best sample = %d %",  cur_best);
+            printf(", best = %d %",  cur_best);
         }
-
     }
 
     gpioWrite(ALL_ROW_HI, PI_LOW);
@@ -423,14 +779,20 @@ void ising_test_multi_times(int sample_times)
 
     return all_results;
 }
-// def benchmark_adjacency(adj,sample_count):
-//     board1 = cobifixed65_rpi()
-//     board1.bit_stream_generate_adj(adj,0)
-//     graph_problem_file = "{0}{1}.txt".format("run_files/all_to_all_graph_write_", 0)
-//     result_tmp = board1.test_multi_times(sample_count, 7, 59, graph_problem_file, verbose=False,return_spins=True)
-//     return result_tmp
+
+void ising_bit_stream_generate_adj(IsingData *ising_data, double **val)
+{
+
+        // input_graph = graph_helper.realize_weights(graph_helper.cobifixed65_basegroups,adj)
+        // input_graph = graph_helper.add_shil(input_graph,4)
+        // input_graph = graph_helper.add_calibration(input_graph,"./calibration/cals.txt")
+        // create_graph.write_prog_from_matrix(input_graph,i)
+        // self.selected_file = "run_files/all_to_all_graph_write_%i.txt" %i
 
 
+        // self.programming_bits = self.modify_array_for_pins(input_graph,np.zeros((64,64),dtype=np.int8),63
+    ising_modify_array_for_pins(val, ising_data->programming_bits, 63);
+}
 
 int ising_init()
 {
@@ -438,11 +800,12 @@ int ising_init()
 
     // setup GPIO pins
     ising_gpio_setup();
+    return 0;
 }
 
 bool ising_established()
 {
-    // TODO
+    // TODO How to verify existence of ising chip?
     // connection = getenv("DW_INTERNAL__CONNECTION");
     // if (connection == NULL) {
     return false;
@@ -450,9 +813,44 @@ bool ising_established()
     // return true;
 }
 
-void ising_solver(double **val, int maxNodes, int8_t *Q)
+void ising_solver(double **val, int prob_size, int8_t *Q)
 {
-    // TODO
+    if (ising_init() == 1) {
+        printf("Init failed\n");
+        exit(1);
+    }
+
+    if (prob_size > 59) {
+        printf("Quitting.. ising_solver called with size %d. Cannot be greater than 59.\n", prob_size);
+        exit(1);
+    }
+
+    int sample_times = 20; //  # sample times
+    int sample_bits = 8;   //# use 8 bits sampling
+
+    IsingData *ising_data = ising_data_mk(prob_size);
+
+    ising_bit_stream_generate_adj(ising_data, val, prob_size);
+
+    // # test_multi_times(sample_count, 7, 59, graph_problem_file, verbose=False,return_spins=True)
+    // # (sample_times, sample_bits, size, graph_problem_file,verbose=True,return_spins =False)
+    int *results = ising_test_multi_times(ising_data, sample_times, sample_bits, prob_size);
+
+
+    // TODO display results
+    printf("Results:\n--\n");
+    int i;
+    for(i = 0; i < sample_times; i++) {
+        printf("%d\n", results[i]);
+    }
+    printf("\n--");
+
+    /* int i; */
+    /* for (i = 0; i < 504; i++) { */
+    /*     printf("%d", ising_data->chip2_test[i]); */
+    /* } */
+    printf("\n");
+
 }
 
 void ising_close()
@@ -461,5 +859,5 @@ void ising_close()
 }
 
 #ifdef __cplusplus
-// }
+}
 #endif

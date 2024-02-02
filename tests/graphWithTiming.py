@@ -7,17 +7,16 @@ import seaborn as sns
 import csv
 import sys
 
-filePrefix = "foo"
 files = {
-    "0.1" : "foo_time0.1s_seq_bqp1000.data.probnum",
-    "0.5" : "foo_time0.5s_seq_bqp1000.data.probnum",
-    "1"   : "foo_time1s_seq_bqp1000.data.probnum",
-    "2"   : "foo_time2s_seq_bqp1000.data.probnum",
-    "5"   : "foo_time5s_seq_bqp1000.data.probnum",
-    "10"  : "foo_time10s_seq_bqp1000.data.probnum",
-    "15"  : "foo_time15s_seq_bqp1000.data.probnum",
-    "30"  : "foo_time30s_seq_bqp1000.data.probnum",
-    "60"  : "foo_time60s_seq_bqp1000.data.probnum"
+    "0.1" : "new_p0g1000_time0.1s_bqp1000.data.probnum",
+    "0.5" : "new_p0g1000_time0.5s_bqp1000.data.probnum",
+    "1"   : "new_p0g1000_time1s_bqp1000.data.probnum",
+    # "2"   : "new_p0g1000_time2s_bqp1000.data.probnum",
+    "5"   : "new_p0g1000_time5s_bqp1000.data.probnum",
+    "10"  : "new_p0g1000_time10s_bqp1000.data.probnum",
+    # "15"  : "new_p0g1000_time15s_bqp1000.data.probnum",
+    "30"  : "new_p0g1000_time30s_bqp1000.data.probnum",
+    "60"  : "new_p0g1000_time60s_bqp1000.data.probnum"
 }
 
 TARGET_ENERGIES = [371438, 354932, 371236, 370675, 352760, 359629, 371193, 351994, 349337, 351415]

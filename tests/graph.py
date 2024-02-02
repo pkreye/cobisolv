@@ -1,7 +1,7 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-
+import pandas as pd
 import seaborn as sns
 
 import csv
@@ -118,7 +118,7 @@ def process_data(data, globalSearchFactorFilter, solvedCondition=1):
 
     return tts, solvedCount, runTimes, probTimes, probSetTimes
 
-def graph_cumulativeAvgTime(probTimes, globalSearchParam, filePrefix, problemSetName, outdir, show=False, save=False):
+def graph_cumulativeAvgTime(probTimes, globalSearchParam, filePrefix, problemSetName, outdir, show=False, save=False, clear=False):
     xdata = []
     ydata = []
     cumulativeTime = 0
@@ -154,21 +154,25 @@ def graph_cumulativeAvgTime(probTimes, globalSearchParam, filePrefix, problemSet
             outfile = "{}/{}_{}_cumulative_avg_p0g{}.png".format(outdir, filePrefix, problemSet, globalSearchParam)
         print("Saving figure to {}".format(outfile))
         plt.savefig(outfile)
-    plt.clf()
+
+    if clear:
+        plt.clf()
     return
 
-def graph_cumulativeProblemSetTime(probTimes, globalSearchParam, filePrefix, problemSetName, outdir, show=False, save=False):
+def graph_cumulativeProblemSetTime(probTimes, globalSearchParam, filePrefix, problemSetName, outdir):
     pivotTimes = []
 
     numSets = None
     probSetCount = 1
+
+    result = ([],[])
 
     for probNum in probTimes:
         lenTest = len(probTimes[probNum])
         if numSets is None:
             numSets = lenTest
         elif lenTest != numSets:
-            print("Error: Inconsistent number of solutions: problem set number {}".format(probSetCount))
+            print("Error: Inconsistent number of solutions: problem set number {}: len {}".format(probSetCount, lenTest))
         probSetCount += 1
 
     for setNum in range(numSets):
@@ -192,43 +196,49 @@ def graph_cumulativeProblemSetTime(probTimes, globalSearchParam, filePrefix, pro
             solvedCount += 1
 
         print("xdata {}, \nydata {}".format(xdata, ydata))
-        p = sns.lineplot(x=xdata, y=ydata)
 
-        if solvedCond != 1:
-            plt.title("{} Run {} (Global search factor: {}, Solved Condition: {})".format(probSetCount, problemSet, globalSearchParam, solvedCond))
-        else:
-            plt.title("{} Run {} (global search factor: {})".format(probSetCount, problemSet, globalSearchParam))
+        result[0].append(xdata)
+        result[1].append(ydata)
 
-        plt.xlabel("Total time (seconds)")
-        plt.ylabel("Fraction Solved")
+        # p = sns.lineplot(x=xdata, y=ydata, marker='o')
 
-        if show:
-            plt.show()
+        # if solvedCond != 1:
+        #     plt.title("{} Run {} (Global search factor: {}, Solved Condition: {})".format(probSetCount, problemSet, globalSearchParam, solvedCond))
+        # else:
+        #     plt.title("{} Run {} (global search factor: {})".format(probSetCount, problemSet, globalSearchParam))
 
-        if save:
-            if solvedCond != 1:
-                outfile = "{}/{}_{}_cumulative_p0g{}_cond{}_{}.png".format(outdir, filePrefix, problemSet, globalSearchParam, solvedCond, probSetCount)
-            else:
-                outfile = "{}/{}_{}_cumulative_p0g{}_{}.png".format(outdir, filePrefix, problemSet, globalSearchParam, probSetCount)
-            print("Saving figure to {}".format(outfile))
-            plt.savefig(outfile)
-        plt.clf()
+        # plt.xlabel("Total time (seconds)")
+        # plt.ylabel("Fraction Solved")
+
+        # if show:
+        #     plt.show()
+
+        # if save:
+        #     if solvedCond != 1:
+        #         outfile = "{}/{}_{}_cumulative_p0g{}_cond{}_{}.png".format(outdir, filePrefix, problemSet, globalSearchParam, solvedCond, probSetCount)
+        #     else:
+        #         outfile = "{}/{}_{}_cumulative_p0g{}_{}.png".format(outdir, filePrefix, problemSet, globalSearchParam, probSetCount)
+        #     print("Saving figure to {}".format(outfile))
+        #     plt.savefig(outfile)
+        # if clear:
+        #     plt.clf()
 
         probSetCount += 1
-    return
+    return result
 
 if __name__ == "__main__":
-    outdir = "/home/panta/Pictures/qbsolv"
+    outdir = "/home/foobar/Pictures/qbsolv"
     problemSet = "bqp1000"
     filePrefix = "tts"
     inputFile = "{}_{}.data.probnum".format(filePrefix, problemSet)
 
     colors = sns.color_palette()
 
-    solvedCond = 0.99
+    solvedCond = 1
 
     data = read_data_file(inputFile)
 
+    tmp_data = []
     for globalSearchParam in [50, 100, 1000]:
         print("Global search param: {}".format(globalSearchParam))
         tts, solvedCount, runTimes, probTimes, probSetTimes = process_data(data, globalSearchParam)
@@ -261,5 +271,12 @@ if __name__ == "__main__":
             ))
 
 
-        graph_cumulativeAvgTime(probTimes, problemSet, filePrefix, globalSearchParam, outdir, show=True, save=False)
-        graph_cumulativeProblemSetTime(probTimes, problemSet, filePrefix, globalSearchParam, outdir, show=True, save=False)
+        #graph_cumulativeAvgTime(probTimes, problemSet, filePrefix, globalSearchParam, outdir, show=True, save=False, clear=False)
+        tmp_data.append(graph_cumulativeProblemSetTime(probTimes, globalSearchParam, filePrefix, problemSet, outdir))
+        print(len(tmp_data))
+        xdata = sorted(set(tmp_data[0][1] + tmp_data[1][1] + tmp_data[2][1]))
+
+        df = pd.DataFrame({'Time (seconds)': xdata, 'Global search factor: 50': tmp_data[0][2], 'Global search factor: 100': tmp_data[1][2], 'Global search factor: 1000': tmp_data[2][2]})
+        sns.lineplot(df)
+    #plt.show()
+    #plt.clf()

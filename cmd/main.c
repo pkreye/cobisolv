@@ -22,6 +22,7 @@
 
 
 #include "dwsolv.h"
+#include "ising.h"
 #include "qbsolv.h"
 #include "readqubo.h"
 #include "util.h"
@@ -65,6 +66,7 @@ int main(int argc, char *argv[]) {
     bool unixStyleOutput = false;
 
     bool use_dwave = false;
+    bool use_ising = false;
 
     extern char *optarg;
     extern int optind, optopt, opterr;
@@ -111,8 +113,13 @@ int main(int argc, char *argv[]) {
 
     int opt, option_index = 0;
     char *chx;               // used as exit ptr in strto(x) functions
+
     if (dw_established()) {  // user has set up a DW envir
         use_dwave = true;
+    }
+
+    if (ising_established()) {  // Ising hw has been set up
+        use_ising = true;
     }
 
     while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:u:", longopts, &option_index)) != -1) {
@@ -181,6 +188,7 @@ int main(int argc, char *argv[]) {
                 }
 
                 use_dwave = false;  // explicit setting of Submatrix says to use tabu solver, regardless of other
+                use_ising = false;
                 if (param.sub_size == 0) {
                     use_dwave = true;  // except where -S 0
                 }
@@ -262,6 +270,11 @@ int main(int argc, char *argv[]) {
     }
     numsolOut_ = 0;
 
+    if (use_ising) {
+        param.sub_size = 59;
+        param.sub_sampler = &ising_sub_sample;
+    }
+
     /* if (!unixStyleOutput) { */
     /*     print_opts(maxNodes_, &param); */
     /* } */
@@ -294,6 +307,10 @@ int main(int argc, char *argv[]) {
     if (use_dwave) {
         dw_close();
     }
+    if (use_ising) {
+        ising_close();
+    }
+
     if (Verbose_ > 3) {
         fprintf(outFile_, "\n\t\"qbsolv  -i %s\" (%d nodes, %d couplers) - end-of-job\n\n", inFileName, nNodes_,
                 nCouplers_);

@@ -14,6 +14,7 @@
 
 #include "dwsolv.h"
 #include "extern.h"
+#include "ising.h"
 #include "macros.h"
 #include "qbsolv.h"
 #include "util.h"
@@ -572,11 +573,27 @@ void dw_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void 
     free(flip_cost);
 }
 
+
+void print_array2d(double **a, int w, int h)
+{
+    int x, y;
+    for (x = 0; x < w; x++) {
+        for (y = 0; y < h; y++) {
+            printf("%lf ", a[x][y]);
+        }
+        printf("\n");
+    }
+}
 void tabu_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *sub_sampler_data) {
     int *TabuK;
     int *index;
     double *flip_cost = (double *)malloc(sizeof(double) * subMatrix);
     int8_t *current_best = (int8_t *)malloc(sizeof(int8_t) * subMatrix);
+
+    if (Verbose_ > 0) {
+        print_array2d(sub_qubo, subMatrix, subMatrix);
+    }
+
 
     if (GETMEM(TabuK, int, subMatrix) == NULL) BADMALLOC
     if (GETMEM(index, int, subMatrix) == NULL) BADMALLOC
@@ -593,6 +610,16 @@ void tabu_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, voi
     free(flip_cost);
     free(index);
     free(TabuK);
+}
+
+void ising_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *sub_sampler_data) {
+    ising_solver(sub_qubo, subMatrix, sub_solution);
+
+    int64_t sub_bit_flips = 0;  //  run a local search with higher precision
+    double *flip_cost = (double *)malloc(sizeof(double) * subMatrix);
+    local_search(sub_solution, subMatrix, sub_qubo, flip_cost, &sub_bit_flips);
+
+    free(flip_cost);
 }
 
 // Define the default set of parameters for the solve routine
