@@ -44,7 +44,7 @@
 #if _WIN32
 #define LONGFORMAT "lld"
 #elif defined(__unix__) || defined(__HAIKU__)
-#define LONGFORMAT "ld"
+#define LONGFORMAT "lld"
 #elif defined(__APPLE__)
 #define LONGFORMAT "lld"
 #else

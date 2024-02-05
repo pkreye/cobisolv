@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
         use_ising = true;
     }
 
-    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:u:", longopts, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:u:I:", longopts, &option_index)) != -1) {
         switch (opt) {
             case 'a':
                 strcpy(algo_, optarg);  // algorithm copied off of command line -a option
@@ -231,6 +231,9 @@ int main(int argc, char *argv[]) {
                 break;
             case 'u':
                 unixStyleOutput = true;
+                break;
+            case 'I':
+                use_ising = true;
                 break;
             default: /* '?' or unknown */
                 print_help();

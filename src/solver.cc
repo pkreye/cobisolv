@@ -584,6 +584,7 @@ void print_array2d(double **a, int w, int h)
         printf("\n");
     }
 }
+
 void tabu_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *sub_sampler_data) {
     int *TabuK;
     int *index;
@@ -613,13 +614,34 @@ void tabu_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, voi
 }
 
 void ising_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *sub_sampler_data) {
-    ising_solver(sub_qubo, subMatrix, sub_solution);
+    int8_t *ising_sub_solution = (int8_t*)malloc(sizeof(int8_t) * subMatrix);
+
+    // Convert solution to ising formulation
+    for(int i = 0; i < subMatrix; i++) {
+        if (sub_solution[i] == 1) {
+            ising_sub_solution[i] = 1;
+        } else {
+            ising_sub_solution[i] = -1;
+        }
+    }
+
+    ising_solver(sub_qubo, subMatrix, ising_sub_solution);
+
+    // Convert ising solution back to QUBO form
+    for(int i = 0; i < subMatrix; i++) {
+        if (ising_sub_solution[i] == 1) {
+            sub_solution[i] = 1;
+        } else {
+            sub_solution[i] = 0;
+        }
+    }
 
     int64_t sub_bit_flips = 0;  //  run a local search with higher precision
     double *flip_cost = (double *)malloc(sizeof(double) * subMatrix);
     local_search(sub_solution, subMatrix, sub_qubo, flip_cost, &sub_bit_flips);
 
     free(flip_cost);
+    free(ising_sub_solution);
 }
 
 // Define the default set of parameters for the solve routine
@@ -813,7 +835,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
     // outer loop begin
     while (ContinueWhile) {
         if (qubo_size > 20 &&
-            subMatrix < qubo_size) {  // these are of the size that will use updates from submatrix processing
+            subMatrix <= qubo_size) {  // these are of the size that will use updates from submatrix processing
             if (strncmp(&algo_[0], "o", strlen("o")) == 0) {
                 // use the first "remove" index values to remove rows and columns from new matrix
                 // initial TabuK to nothing tabu sub_solution[i] = Q[i];

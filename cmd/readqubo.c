@@ -25,11 +25,13 @@
 int pFound = false;
 int lineNm = 0;
 const char s[2] = " ";  // TODO: please comment what this variable is for
-int i, j, k;            // standard scratch ints
+
 int inode = 0, icoupler = 0;
-double f;
 
 int read_qubo(const char *inFileName, FILE *inFile) {
+    int i, j;            // standard scratch ints
+    double f;
+
     int lineLen;
     size_t linecap = 0;
     char *line = NULL;
