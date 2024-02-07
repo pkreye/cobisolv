@@ -13,6 +13,7 @@ typedef struct IsingData {
     uint8_t *chip2_test;
     int num_samples;
     int **spins;
+    int64_t chip_delay;
     /* int **graph_arr; */
     /* uint8_t *samples; */
 } IsingData;
@@ -23,7 +24,7 @@ int ising_init(void);
 
 void ising_close(void);
 
-void ising_solver(double **, int, int8_t *);
+void ising_solver(double **, int, int8_t *, int64_t);
 
 #ifdef __cplusplus
 }

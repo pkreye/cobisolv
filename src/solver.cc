@@ -614,6 +614,8 @@ void tabu_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, voi
 }
 
 void ising_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *sub_sampler_data) {
+    int64_t ising_delay = *((int64_t*) sub_sampler_data);
+
     int8_t *ising_sub_solution = (int8_t*)malloc(sizeof(int8_t) * subMatrix);
 
     // Convert solution to ising formulation
@@ -625,7 +627,7 @@ void ising_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, vo
         }
     }
 
-    ising_solver(sub_qubo, subMatrix, ising_sub_solution);
+    ising_solver(sub_qubo, subMatrix, ising_sub_solution, ising_delay);
 
     // Convert ising solution back to QUBO form
     for(int i = 0; i < subMatrix; i++) {
@@ -654,6 +656,7 @@ parameters_t default_parameters() {
     param.preSearchPassFactor = 0;
     param.globalSearchPassFactor = 0;
     param.seed = 17932241798878;
+    param.ising_delay = 100;
     return param;
 }
 
@@ -763,8 +766,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
             energy = evaluate(solution, qubo_size, (const double **)qubo, flip_cost);
         } else {
             startTime = omp_get_wtime();
-            energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,
-                                 TargetSet_, index, 0);
+            energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,TargetSet_, index, 0);
             initialTabuTime = omp_get_wtime() - startTime;
         }
 
@@ -834,14 +836,15 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
 
     // outer loop begin
     while (ContinueWhile) {
-        if (qubo_size > 20 &&
-            subMatrix <= qubo_size) {  // these are of the size that will use updates from submatrix processing
+        // these are of the size that will use updates from submatrix processing
+        if ((qubo_size > 20 && subMatrix <= qubo_size) || TabuPass_factor == 0) {
             if (strncmp(&algo_[0], "o", strlen("o")) == 0) {
                 // use the first "remove" index values to remove rows and columns from new matrix
                 // initial TabuK to nothing tabu sub_solution[i] = Q[i];
                 // create compression bit vector
                 val_index_sort(index, flip_cost, qubo_size);  // Create index array of sorted values
                 l_max = MIN(qubo_size - subMatrix, MaxNodes_sub);
+                l_max = MAX(l_max, 1);
                 if (Verbose_ > 1)
                     printf("Reduced submatrix solution l = 0; %d, subMatrix size = %d\n", l_max, subMatrix);
             } else if (strncmp(&algo_[0], "d", strlen("d")) == 0) {
@@ -871,7 +874,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                  {  // scope of parallel region
                     int t_change = 0;
                     int *Icompress;
-                    if (GETMEM(Icompress, int, qubo_size) == NULL) BADMALLOC
+                    if (GETMEM(Icompress, int, qubo_size) == NULL) BADMALLOC // TODO ? consider optimization via allocating outside of loop
 
                     for (l = 0; l < l_max; l += subMatrix) {
                         if (strncmp(&algo_[0], "o", strlen("o")) == 0) {

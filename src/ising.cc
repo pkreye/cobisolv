@@ -341,7 +341,7 @@ void binary_splice_rev(int num, int *bin_list)
 
 // ising subproblem solver
 
-IsingData *ising_data_mk(size_t size)
+IsingData *ising_data_mk(size_t size, int64_t chip_delay)
 {
     IsingData *d = (IsingData*)malloc(sizeof(IsingData));
     d->probSize = size;
@@ -352,6 +352,9 @@ IsingData *ising_data_mk(size_t size)
 
     d->num_samples = 1;
     d->spins = _malloc_array2d(d->num_samples, NUM_GROUPS);
+
+    d->chip_delay = chip_delay;
+
     return d;
 }
 
@@ -778,11 +781,11 @@ int ising_cal_energy(IsingData *ising_data)
     gpioWrite(ROSC_EN, PI_LOW);
     gpioWrite(ROSC_EN, PI_HIGH);
 
-    usleep(100);
+    usleep(ising_data->chip_delay);
 
     gpioWrite(SAMPLE_CLK, PI_HIGH);
         /* #time.sleep(0.0001) */
-    usleep(100);
+    usleep(ising_data->chip_delay);
     gpioWrite(SAMPLE_CLK, PI_LOW);
 
     int bit = 0;
@@ -1045,7 +1048,7 @@ bool ising_established()
     // return true;
 }
 
-void ising_solver(double **val, int maxNodes, int8_t *Q)
+void ising_solver(double **val, int maxNodes, int8_t *Q, int64_t chip_delay)
 {
     if (ising_init() == 1) {
         printf("Init failed\n");
@@ -1057,10 +1060,10 @@ void ising_solver(double **val, int maxNodes, int8_t *Q)
         exit(1);
     }
 
-    int sample_times = 20; //  # sample times
+    int sample_times = 10; //  # sample times
     int sample_bits = 8;   //# use 8 bits sampling
 
-    IsingData *ising_data = ising_data_mk(maxNodes);
+    IsingData *ising_data = ising_data_mk(maxNodes, chip_delay);
 
     int **norm_val = _malloc_array2d(maxNodes, maxNodes);
     ising_norm_val(val, norm_val, maxNodes);

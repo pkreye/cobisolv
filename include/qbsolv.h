@@ -40,6 +40,8 @@ typedef struct parameters_t {
     int32_t preSearchPassFactor;
     int32_t globalSearchPassFactor;
 
+    int64_t ising_delay;
+
     int64_t seed;
 
 } parameters_t;

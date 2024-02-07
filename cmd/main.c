@@ -109,6 +109,8 @@ int main(int argc, char *argv[]) {
                                        {"preSearchPassFactor", required_argument, NULL, 'p'},
                                        {"globalSearchPassFactor", required_argument, NULL, 'g'},
                                        {"unixOutput", no_argument, NULL, 'u'},
+                                       {"useIsing", no_argument, NULL, 'I'},
+                                       {"isingChipDelay", required_argument, NULL, 'd'},
                                        {NULL, no_argument, NULL, 0}};
 
     int opt, option_index = 0;
@@ -118,11 +120,7 @@ int main(int argc, char *argv[]) {
         use_dwave = true;
     }
 
-    if (ising_established()) {  // Ising hw has been set up
-        use_ising = true;
-    }
-
-    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:u:I:", longopts, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:uId:", longopts, &option_index)) != -1) {
         switch (opt) {
             case 'a':
                 strcpy(algo_, optarg);  // algorithm copied off of command line -a option
@@ -233,7 +231,13 @@ int main(int argc, char *argv[]) {
                 unixStyleOutput = true;
                 break;
             case 'I':
-                use_ising = true;
+                if (ising_established()) {  // Ising hw has been set up
+                    use_ising = true;
+                }
+                break;
+            case 'd':
+                // Get delay to use when waiting for ising chip, in milliseconds
+                param.ising_delay = strtol(optarg, &chx, 10);
                 break;
             default: /* '?' or unknown */
                 print_help();
@@ -276,6 +280,7 @@ int main(int argc, char *argv[]) {
     if (use_ising) {
         param.sub_size = 59;
         param.sub_sampler = &ising_sub_sample;
+        param.sub_sampler_data = &param.ising_delay;
     }
 
     /* if (!unixStyleOutput) { */
