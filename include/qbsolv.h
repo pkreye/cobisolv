@@ -13,6 +13,7 @@
 #pragma once
 
 #include "stdheaders_shim.h"
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,7 +41,9 @@ typedef struct parameters_t {
     int32_t preSearchPassFactor;
     int32_t globalSearchPassFactor;
 
-    int64_t ising_delay;
+    int ising_delay;
+    int ising_num_samples;
+    bool ising_descend;
 
     int64_t seed;
 
@@ -58,6 +61,11 @@ void tabu_sub_sample(double** sub_qubo, int subMatrix, int8_t* sub_solution, voi
 // Callback for `solve` to use ising chip on subproblems
 void ising_sub_sample(double** sub_qubo, int subMatrix, int8_t* sub_solution, void*);
 
+// Callback for `solve` to generate random solutions on subproblems
+void rand_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *);
+
+// Callback for `solve` to do return the subsolution passed to the subproblem
+void null_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *);
 
 // Entry into the overall solver from the main program
 void solve(double** qubo, const int qubo_size, int8_t** solution_list, double* energy_list, int* solution_counts,

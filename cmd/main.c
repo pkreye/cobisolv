@@ -27,7 +27,6 @@
 #include "readqubo.h"
 #include "util.h"
 
-
 void print_help(void);
 void print_qubo_format(void);
 
@@ -65,8 +64,11 @@ int main(int argc, char *argv[]) {
 
     bool unixStyleOutput = false;
 
+    // Sub sampler flags
     bool use_dwave = false;
     bool use_ising = false;
+    bool use_rand  = false;
+    bool use_null  = false;
 
     extern char *optarg;
     extern int optind, optopt, opterr;
@@ -111,6 +113,10 @@ int main(int argc, char *argv[]) {
                                        {"unixOutput", no_argument, NULL, 'u'},
                                        {"useIsing", no_argument, NULL, 'I'},
                                        {"isingChipDelay", required_argument, NULL, 'd'},
+                                       {"useRandom", no_argument, NULL, 'R'},
+                                       {"useNull", no_argument, NULL, 'N'},
+                                       {"isingNumSamples", required_argument, NULL, 'z'},
+                                       {"isingDescend", no_argument, NULL, 'D'},
                                        {NULL, no_argument, NULL, 0}};
 
     int opt, option_index = 0;
@@ -120,7 +126,7 @@ int main(int argc, char *argv[]) {
         use_dwave = true;
     }
 
-    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:uId:", longopts, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:uId:RNz:D", longopts, &option_index)) != -1) {
         switch (opt) {
             case 'a':
                 strcpy(algo_, optarg);  // algorithm copied off of command line -a option
@@ -231,14 +237,26 @@ int main(int argc, char *argv[]) {
                 unixStyleOutput = true;
                 break;
             case 'I':
-                if (ising_established()) {  // Ising hw has been set up
-                    use_ising = true;
-                }
+                use_ising = true;
                 break;
             case 'd':
-                // Get delay to use when waiting for ising chip, in milliseconds
+                // Get delay to use when waiting for ising chip, in microsecond
                 param.ising_delay = strtol(optarg, &chx, 10);
                 break;
+            case 'R':
+                use_rand = true;
+                break;
+            case 'N':
+                use_null = true;
+                break;
+            case 'z':
+                // Number of samples to take when solving a subqubo with the ising chip
+                param.ising_num_samples = strtol(optarg, &chx, 10);
+                break;
+            case 'D':
+                param.ising_descend = true;
+                break;
+
             default: /* '?' or unknown */
                 print_help();
                 exit(0);
@@ -277,11 +295,35 @@ int main(int argc, char *argv[]) {
     }
     numsolOut_ = 0;
 
-    if (use_ising) {
+    if (use_ising && ising_established()) {
+        if (ising_init() != 0) {
+            printf("Init failed\n");
+            exit(1);
+        }
+
+        if (atexit(ising_close) != 0) {
+            fprintf(stderr, "Failed to register exit function\n");
+            exit(1);
+        }
+
+        if (param.ising_num_samples < 1) {
+            fprintf(stderr, "Number of samples must be greater than 0.\n");
+            exit(2);
+        }
+
         param.sub_size = 59;
         param.sub_sampler = &ising_sub_sample;
-        param.sub_sampler_data = &param.ising_delay;
+        param.sub_sampler_data = &param;
     }
+
+    if (use_rand) {
+        param.sub_sampler = &rand_sub_sample;
+    }
+
+    if (use_null) {
+        param.sub_sampler = &null_sub_sample;
+    }
+
 
     /* if (!unixStyleOutput) { */
     /*     print_opts(maxNodes_, &param); */
@@ -315,9 +357,11 @@ int main(int argc, char *argv[]) {
     if (use_dwave) {
         dw_close();
     }
-    if (use_ising) {
-        ising_close();
-    }
+
+    /* // should have been registered via atexit */
+    /* if (use_ising) { */
+    /*     ising_close(); */
+    /* } */
 
     if (Verbose_ > 3) {
         fprintf(outFile_, "\n\t\"qbsolv  -i %s\" (%d nodes, %d couplers) - end-of-job\n\n", inFileName, nNodes_,

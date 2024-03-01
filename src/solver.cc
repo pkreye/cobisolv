@@ -165,8 +165,7 @@ double evaluate_1bit(const double old_energy, const uint bit, int8_t *const solu
 // @param[out] flip_cost The change in energy from flipping a bit
 // @param[in,out] bit_flips is the number of candidate bit flips performed in the entire algorithm so far
 // @returns New energy of the modified solution
-double local_search_1bit(double energy, int8_t *solution, uint qubo_size, double **qubo, double *flip_cost,
-                         int64_t *bit_flips) {
+double local_search_1bit(double energy, int8_t *solution, uint qubo_size, double **qubo, double *flip_cost, int64_t *bit_flips) {
     int kkstr = 0, kkend = qubo_size, kkinc;
     int *index;
     if (GETMEM(index, int, qubo_size) == NULL) BADMALLOC
@@ -251,8 +250,7 @@ double local_search(int8_t *solution, int qubo_size, double **qubo, double *flip
 // @param target Halt if this energy is reached and TargetSet is true
 // @param target_set Do we have a target energy at which to terminate
 // @param index is the order in which to perform candidate bit flips (determined by flip_cost).
-double tabu_search(int8_t *solution, int8_t *best, uint qubo_size, double **qubo, double *flip_cost, int64_t *bit_flips,
-                   int64_t iter_max, int *TabuK, double target, bool target_set, int *index, int nTabu) {
+double tabu_search(int8_t *solution, int8_t *best, uint qubo_size, double **qubo, double *flip_cost, int64_t *bit_flips, int64_t iter_max, int *TabuK, double target, bool target_set, int *index, int nTabu) {
     uint last_bit = 0;   // Track what the previously flipped bit was
     bool brk;            // flag to mark a break and not a fall-thru of the loop
     double best_energy;  // best solution so far
@@ -522,8 +520,7 @@ double solv_submatrix(int8_t *solution, int8_t *best, uint qubo_size, double **q
 // @param subMatrix is the size of the subMatrix to create and solve
 // @param[in,out] solution inputs a current solution and returns the projected solution
 // @param[out] stores the new, projected solution found during the algorithm
-int reduce_solve_projection(int *Icompress, double **qubo, int qubo_size, int subMatrix, int8_t *solution,
-                            parameters_t *param) {
+int reduce_solve_projection(int *Icompress, double **qubo, int qubo_size, int subMatrix, int8_t *solution, parameters_t *param) {
     int change = 0;
     int8_t *sub_solution = (int8_t *)malloc(sizeof(int8_t) * subMatrix);
     double **sub_qubo;
@@ -613,37 +610,29 @@ void tabu_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, voi
     free(TabuK);
 }
 
-void ising_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *sub_sampler_data) {
-    int64_t ising_delay = *((int64_t*) sub_sampler_data);
+void ising_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *sub_sampler_data)
+{
+    parameters_t *params = (parameters_t*) sub_sampler_data;
 
-    int8_t *ising_sub_solution = (int8_t*)malloc(sizeof(int8_t) * subMatrix);
+    ising_solver(sub_qubo, subMatrix, sub_solution, params->ising_num_samples, params->ising_delay, params->ising_descend);
 
-    // Convert solution to ising formulation
-    for(int i = 0; i < subMatrix; i++) {
-        if (sub_solution[i] == 1) {
-            ising_sub_solution[i] = 1;
-        } else {
-            ising_sub_solution[i] = -1;
-        }
-    }
-
-    ising_solver(sub_qubo, subMatrix, ising_sub_solution, ising_delay);
-
-    // Convert ising solution back to QUBO form
-    for(int i = 0; i < subMatrix; i++) {
-        if (ising_sub_solution[i] == 1) {
-            sub_solution[i] = 1;
-        } else {
-            sub_solution[i] = 0;
-        }
-    }
-
-    int64_t sub_bit_flips = 0;  //  run a local search with higher precision
+    int64_t sub_bit_flips = 0;
     double *flip_cost = (double *)malloc(sizeof(double) * subMatrix);
     local_search(sub_solution, subMatrix, sub_qubo, flip_cost, &sub_bit_flips);
 
     free(flip_cost);
-    free(ising_sub_solution);
+}
+
+void rand_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *sub_sampler_data)
+{
+    randomize_solution(sub_solution, subMatrix);
+}
+
+void null_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *sub_sampler_data)
+{
+    int64_t sub_bit_flips = 0;
+    double *flip_cost = (double *)malloc(sizeof(double) * subMatrix);
+    local_search(sub_solution, subMatrix, sub_qubo, flip_cost, &sub_bit_flips);
 }
 
 // Define the default set of parameters for the solve routine
@@ -657,6 +646,8 @@ parameters_t default_parameters() {
     param.globalSearchPassFactor = 0;
     param.seed = 17932241798878;
     param.ising_delay = 100;
+    param.ising_num_samples = 10;
+    param.ising_descend = false;
     return param;
 }
 
@@ -1043,6 +1034,13 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
             qubo_size, Qbest, numPartCalls, best_energy * sign,  param,
             currentTime, initialTabuTime, globalTabuTime, subQuboTime
         );
+    } else if (Verbose_ > 0){
+        Qbest = &solution_list[Qindex[0]][0];
+        best_energy = energy_list[Qindex[0]];
+        // printf(" evaluated solution %8.2lf\n",
+        //     sign * Simple_evaluate(Qbest, qubo_size, (const double **)qubo));
+
+        print_output(qubo_size, Qbest, numPartCalls, best_energy * sign, CPSECONDS, param);
     }
 
     free(solution);

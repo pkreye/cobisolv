@@ -234,7 +234,7 @@ void print_output(int maxNodes, int8_t *solution, long numPartCalls, double ener
     }
 }
 
-//  This routine performs the modified output
+//  This routine performs the output in a tabular format.
 //
 void print_delimited_output(int maxNodes, int8_t *solution, long numPartCalls, double energy, parameters_t *param,
                      double totalTime, double initialTabuTime, double globalTabuTime, double subQuboTime
@@ -247,7 +247,7 @@ void print_delimited_output(int maxNodes, int8_t *solution, long numPartCalls, d
     // for (i = 0; i < maxNodes; i++) {
     //     fprintf(outFile_, "%d", solution[i]);
     // }
-    fprintf(outFile_, "%s  %ld  %ld  %8.1f %ld  %8.4f %8.4f %8.4f %8.4f %ld\n",
+    fprintf(outFile_, "%s  %d  %d  %8.1f %ld  %8.4f %8.4f %8.4f %8.4f %lld\n",
             param->problemName,
             param->preSearchPassFactor,
             param->globalSearchPassFactor,

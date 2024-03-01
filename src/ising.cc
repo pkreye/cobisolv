@@ -142,6 +142,72 @@ const int BLANK_GRAPH[64][64] = {
     {0,0,4,4,4,2,4,7,4,7,7,6,3,7,7,4,4,7,4,4,1,7,7,7,7,4,2,7,3,5,4,3,1,1,2,4,7,7,7,3,7,5,4,5,3,7,7,2,5,5,1,3,3,3,3,4,7,5,3,4,3,4,7,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 };
+// {
+//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,},
+//     {0,0,4,4,4,2,4,7,4,7,7,6,3,7,7,4,4,7,4,4,1,7,7,7,7,4,2,7,3,5,4,3,1,1,2,4,7,7,7,3,7,5,4,5,3,7,7,2,5,5,1,3,3,3,3,4,7,5,3,4,3,4,7,0,},
+//     {0,4,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
+//     {0,2,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
+//     {0,4,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
+//     {0,1,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,},
+//     {0,2,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
+//     {0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,},
+//     {0,2,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
+//     {0,7,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
+//     {0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
+//     {0,1,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,},
+//     {0,2,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
+//     {0,7,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
+//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
+//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
+//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
+//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
+//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
+//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
+//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,},
+//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
+//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
+//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,},
+//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
+//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
+//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
+//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
+//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
+//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,},
+//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
+//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
+//     {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,},
+//     {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,},
+//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
+//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
+//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,},
+//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
+//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
+//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
+//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
+//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,},
+//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
+//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,},
+//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
+//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,},
+//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
+//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,},
+//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,},
+//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,5,},
+//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,3,},
+//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,2,},
+//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,3,},
+//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,3,},
+//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,4,},
+//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,4,},
+//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,7,},
+//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,5,},
+//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,3,},
+//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,4,},
+//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,3,},
+//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,3,},
+//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,},
+//     {0,0,4,3,3,3,3,0,5,7,5,0,4,7,7,3,3,7,2,5,2,7,2,3,7,3,0,7,3,4,5,3,0,0,3,3,3,7,7,3,7,5,5,5,3,2,1,2,4,5,2,4,2,2,4,5,7,3,3,0,3,1,7,0,}
+// };
 
 //const int BLANK_GRAPH[64][64] = {
 //     {0,0,4,3,3,3,3,0,5,7,5,0,4,7,7,3,3,7,2,5,2,7,2,3,7,3,0,7,3,4,5,3,0,0,3,3,3,7,7,3,7,5,5,5,3,2,1,2,4,5,2,4,2,2,4,5,7,3,3,0,3,1,7,0},
@@ -262,6 +328,25 @@ int *_malloc_array1d(int len)
     return a;
 }
 
+double **_malloc_double_array2d(int w, int h)
+{
+    double** a = (double**)malloc(sizeof(double *) * w);
+    if (a == NULL) {
+        fprintf(stderr, "Bad malloc %s %s:%d\n", __FUNCTION__, __FILE__, __LINE__);
+        exit(1);
+    }
+
+    int i, j;
+    for (i = 0; i < w; i++) {
+        a[i] = (double*)malloc(sizeof(double) * h);
+        for (j = 0; j < h; j++) {
+            a[i][j] = 0;
+        }
+    }
+
+    return a;
+}
+
 int **_malloc_array2d(int w, int h)
 {
     int** a = (int**)malloc(sizeof(int *) * w);
@@ -295,7 +380,7 @@ int **_gen_rand_array2d(int w, int h)
     return a;
 }
 
-void _free_array2d(int **a, int w) {
+void _free_array2d(void **a, int w) {
     int i;
     for (i = 0; i < w; i++) {
         free(a[i]);
@@ -328,6 +413,26 @@ void _array2d_print(int **a, int w, int h)
     }
 }
 
+void _array_print(int *a, int len)
+{
+    for (int y = 0; y < len; y++) {
+        printf("%d ", a[y]);
+    }
+    printf("\n");
+}
+
+
+void _array2d_print_double(double **a, int w, int h)
+{
+    int x, y;
+    for (x = 0; x < w; x++) {
+        for (y = 0; y < h; y++) {
+            printf("%.2f ", a[x][y]);
+        }
+        printf("\n");
+    }
+}
+
 void binary_splice_rev(int num, int *bin_list)
 {
     // given num place lower 6 bits, in reverse order, into bin_list
@@ -341,28 +446,30 @@ void binary_splice_rev(int num, int *bin_list)
 
 // ising subproblem solver
 
-IsingData *ising_data_mk(size_t size, int64_t chip_delay)
+IsingData *ising_data_mk(size_t size, int chip_delay, bool descend)
 {
     IsingData *d = (IsingData*)malloc(sizeof(IsingData));
     d->probSize = size;
     d->w = 64;
     d->h = 64;
     d->programming_bits = _malloc_array2d(d->w, d->h);
-    d->chip2_test = (uint8_t*)malloc(sizeof(uint8_t) * 504);
+    d->chip2_test = (uint8_t*)malloc(sizeof(uint8_t) * 441);
 
     d->num_samples = 1;
-    d->spins = _malloc_array2d(d->num_samples, NUM_GROUPS);
+    d->spins = _malloc_array1d(NUM_GROUPS);
 
     d->chip_delay = chip_delay;
+
+    d->descend = descend;
 
     return d;
 }
 
 void free_ising_data(IsingData *d)
 {
-    _free_array2d(d->programming_bits, d->w);
+    _free_array2d((void**)d->programming_bits, d->w);
     free(d->chip2_test);
-    _free_array2d(d->spins, d->num_samples);
+    free(d->spins);
     free(d);
 }
 
@@ -396,19 +503,19 @@ int ising_gpio_setup()
         gpioSetMode(ROW_ADDR_0,  PI_OUTPUT);
         gpioSetMode(ROW_ADDR_4,  PI_OUTPUT);
 
-        gpioWrite(SAMPLE_CLK, PI_LOW);
+        GPIO_WRITE(SAMPLE_CLK, PI_LOW);
 
         return 0;
 }
 
 void ising_weight_pins_low()
 {
-        gpioWrite(WEIGHT_0, PI_LOW);
-        gpioWrite(WEIGHT_1, PI_LOW);
-        gpioWrite(WEIGHT_2, PI_LOW);
-        gpioWrite(WEIGHT_3, PI_LOW);
-        gpioWrite(WEIGHT_4, PI_LOW);
-        gpioWrite(WEIGHT_5, PI_LOW);
+        GPIO_WRITE(WEIGHT_0, PI_LOW);
+        GPIO_WRITE(WEIGHT_1, PI_LOW);
+        GPIO_WRITE(WEIGHT_2, PI_LOW);
+        GPIO_WRITE(WEIGHT_3, PI_LOW);
+        GPIO_WRITE(WEIGHT_4, PI_LOW);
+        GPIO_WRITE(WEIGHT_5, PI_LOW);
 }
 
 void ising_set_addr(const int *addrs, int *bin_num_list)
@@ -418,9 +525,9 @@ void ising_set_addr(const int *addrs, int *bin_num_list)
     for (i = 0; i < 6; i++) {
         addr_name = addrs[i];
         if (bin_num_list[i] == 1) {
-            gpioWrite(addr_name, PI_HIGH);
+            GPIO_WRITE(addr_name, PI_HIGH);
         } else {
-            gpioWrite(addr_name, PI_LOW);
+            GPIO_WRITE(addr_name, PI_LOW);
         }
     }
 }
@@ -440,7 +547,7 @@ void ising_program_weights(int **programming_bits)
 
     // reset pins for programming
     ising_weight_pins_low();
-    gpioWrite(ALL_ROW_HI, PI_LOW);
+    GPIO_WRITE(ALL_ROW_HI, PI_LOW);
 
     // # run through each row of 64x64 cells in COBI/COBIFREEZE
     int x = 0;
@@ -454,12 +561,12 @@ void ising_program_weights(int **programming_bits)
             ising_set_addr(ROW_ADDRS, bin_row_list); // #assign the row number
             ising_set_addr(COL_ADDRS, bin_col_list); // #assign the column number
 
-            gpioWrite(enable_pin_name, PI_HIGH);
+            GPIO_WRITE(enable_pin_name, PI_HIGH);
 
             // #set weight of 1 cell
             ising_set_addr(WEIGHTS, bin_weight_list); // #assign the weight corresponding to current cell
             // # time.sleep(.001) # Delay removed since COBIFIXED65 board does not have any level shifters which causes additional signal delay
-            gpioWrite(enable_pin_name, PI_LOW);
+            GPIO_WRITE(enable_pin_name, PI_LOW);
             ising_weight_pins_low(); // #reset for next address
         }
     }
@@ -510,60 +617,37 @@ void ising_program_weights(int **programming_bits)
 void ising_gh_read_spins(IsingData *ising_data)
 {
     // chip_data_len must equal 63*7 == 441
-    int const chip_data_len = 441;
-    int num_samples = ising_data->num_samples;
+    // int const chip_data_len = 441;
 
-    // TODO if num_samples is allowed to be > 1, need to handle list of `sample_data` arrays
-    int **sample_data = _malloc_array2d(num_samples, 63);
+    int excess_0s[63];
 
-    int **excess_0s = _malloc_array2d(num_samples, 63);
-    // int **spins = _malloc_array2d(num_samples, NUM_GROUPS);
-
-    int bit_index = 0;
-    int num_index = 0;
-    int sample_index = 0;
+    int node_index = 0;
     int cur_val = 0;
 
-    for (sample_index = 0; sample_index < num_samples; sample_index++) {
-        num_index = 0;
-        for (bit_index = 0; bit_index < chip_data_len; bit_index++) {
-            if (ising_data->chip2_test[bit_index] == 0) {
-                excess_0s[sample_index][num_index]++;
-            } else {
-                excess_0s[sample_index][num_index]--;
-            }
+    // reverse order of nodes
+    for (int i = 0; i < 63; i++) {
+        excess_0s[i] = 0;
+        node_index = (62 - i) * 7;
 
-            if (bit_index % 7 == 0 && bit_index > 0) {
-                sample_data[sample_index][num_index] = cur_val;
-                num_index++;
+        for (int bit_index = 0; bit_index < 7; bit_index++) {
+            cur_val = ising_data->chip2_test[node_index+bit_index];
 
-                cur_val = ising_data->chip2_test[bit_index];
+            if (cur_val == 0) {
+                excess_0s[i]++;
             } else {
-                cur_val = (cur_val << 1) + ising_data->chip2_test[bit_index];
+                excess_0s[i]--;
             }
         }
     }
 
-    int g;
-    for (g = 0; g < NUM_GROUPS; g++) {
-        num_index = COBIFIXED65_BASEGROUPS[g];
-        for (sample_index = 0; sample_index < num_samples; sample_index++) {
-            ising_data->spins[sample_index][g] += excess_0s[sample_index][num_index];
+    for (int g = 0; g < NUM_GROUPS; g++) {
+        node_index = COBIFIXED65_BASEGROUPS[g];
+        if (excess_0s[node_index] <= 0) {
+            ising_data->spins[g] = -1;
+        } else {
+            ising_data->spins[g] = 1;
         }
     }
-
-    for (sample_index = 0; sample_index < num_samples; sample_index++) {
-        for (num_index = 0; num_index < NUM_GROUPS; num_index++) {
-            if (ising_data->spins[sample_index][num_index] <= 0) {
-                ising_data->spins[sample_index][num_index] = -1;
-            } else {
-                ising_data->spins[sample_index][num_index] = 1;
-            }
-        }
-    }
-
-    _free_array2d(sample_data, num_samples);
-    _free_array2d(excess_0s, num_samples);
 }
 
 /* _outer_prod
@@ -621,7 +705,7 @@ void _add_array2d(int **a, int **b, int w, int h)
 int **_matrix_mult(int **a, int a_w, int a_h, int **b, int b_h)
 {
     // b is assumed to have dimensions (a_h, b_h)
-    int b_w = a_h;
+    // int b_w = a_h;
 
     int **result = _malloc_array2d(a_w, b_h);
 
@@ -653,15 +737,19 @@ int **_array2d_element_mult(int **a, int **b, int w, int h)
     return result;
 }
 
-int ising_simple_descent(int *spins, int **weights)
+void ising_simple_descent(int *spins, int **weights)
 {
     // Assumption: NUM_GROUPS == len(weights) == len(weights[i]) == len(spins)
     int size = NUM_GROUPS;
 
-    int *neg_spins = _intdup(spins, size);
-    _scalar_mult(neg_spins, size, -1);
+    int neg_spins[NUM_GROUPS];
+    for (int i = 0; i < size; i++) {
+        // _scalar_mult(neg_spins, size, -1);
+        neg_spins[i] = spins[i] * -1;
+    }
 
     int **cross = _malloc_array2d(size, size);
+    // int cross[NUM_GROUPS][NUM_GROUPS]
     _outer_prod(spins, size, neg_spins, size, cross);
 
     // # prod = cross * (weights+weights.transpose())
@@ -671,64 +759,54 @@ int ising_simple_descent(int *spins, int **weights)
     int **prod = _array2d_element_mult(cross, wt_transpose, size, size);
 
     // # diffs = np.sum(prod,0)
-    int *diffs = _malloc_array1d(size);
-    int i, j;
+    int diffs[NUM_GROUPS];
     // Column-wise sum
-    for (i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++) {
         diffs[i] = 0;
-        for (j = 0; j < size; j++) {
+        for (int j = 0; j < size; j++) {
             diffs[i] += prod[j][i];
         }
     }
 
-    for (i = 0; i < size; i++) {
+
+    // TODO fix recursive structure...
+    _free_array2d((void**)cross, size);
+    _free_array2d((void**)wt_transpose, size);
+    _free_array2d((void**)prod, size);
+
+    for (int i = 0; i < size; i++) {
         if (diffs[i] < 0) {
             spins[i] *= -1;
-
-            // TODO fix recursive structure...
-            free(neg_spins);
-            _free_array2d(cross, size);
-            _free_array2d(wt_transpose, size);
-            _free_array2d(prod, size);
-            free(diffs);
 
             return ising_simple_descent(spins, weights);
         }
     }
+    // return ham;
+}
+
+
+void ising_gh_cal_energy_direct(int *spins, int **weights, int *hamiltonian, bool descend)
+{
+    int size = NUM_GROUPS;
+
+    // implementing only the `descend == True` path in original code
+    if (descend){
+        ising_simple_descent(spins, weights);
+    }
 
     int ham = 0;
-    for (i = 0; i < size; i++) {
-        for (j = 0; j < size; j++) {
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
             ham = ham + spins[i] * spins[j] * weights[i][j];
         }
     }
-
-    // TODO fix recursive structure...
-    free(neg_spins);
-    _free_array2d(cross, size);
-    _free_array2d(wt_transpose, size);
-    _free_array2d(prod, size);
-    free(diffs);
-
-    return ham;
-}
-
-
-void ising_gh_cal_energy_direct(int **spins, int num_samples, int **weights, int *hamiltonians)
-{
-    // Should hold: num_samples == len(spins) and NUM_GROUPS == len(weights)
-    int ham = 0;
-
-    // implementing only the `descend == True` path in original code
-    /* if descend: */
-    int i;
-    for (i = 0; i < num_samples; i++) {
-        ham = ising_simple_descent(spins[i], weights);
-        hamiltonians[i] = ham;
+    *hamiltonian = ham;
+    if (Verbose_ > 2) {
+        printf("Hamiltonian: %d\n", ham);
     }
 }
 
-void ising_gh_cal_energy(IsingData *ising_data, int *hamiltonians)
+void ising_gh_cal_energy(IsingData *ising_data, int *hamiltonian)
 {
     ising_gh_read_spins(ising_data);
 
@@ -755,38 +833,38 @@ void ising_gh_cal_energy(IsingData *ising_data, int *hamiltonians)
     if (Verbose_ > 1) {
         printf("Spins before: ");
         for (i = 0; i < NUM_GROUPS; i++) {
-            printf(" %d", ising_data->spins[0][i]);
+            printf(" %d", ising_data->spins[i]);
         }
         printf("\n");
     }
 
     /* return cal_energy_direct(spins,weights,descend,return_spins) */
-    ising_gh_cal_energy_direct(ising_data->spins, ising_data->num_samples, weights, hamiltonians);
+    ising_gh_cal_energy_direct(ising_data->spins, weights, hamiltonian, ising_data->descend);
 
     if (Verbose_ > 1) {
         printf("Spins after: ");
         for (i = 0; i < NUM_GROUPS; i++) {
-            printf(" %d", ising_data->spins[0][i]);
+            printf(" %d", ising_data->spins[i]);
         }
         printf("\n");
     }
 
-    _free_array2d(weights, NUM_GROUPS);
+    _free_array2d((void**)weights, NUM_GROUPS);
 }
 
 // ising_data_array is not used
 int ising_cal_energy(IsingData *ising_data)
 {
     /* #if sample_index%3==0: */
-    gpioWrite(ROSC_EN, PI_LOW);
-    gpioWrite(ROSC_EN, PI_HIGH);
+    GPIO_WRITE(ROSC_EN, PI_LOW);
+    GPIO_WRITE(ROSC_EN, PI_HIGH);
 
     usleep(ising_data->chip_delay);
 
-    gpioWrite(SAMPLE_CLK, PI_HIGH);
+    GPIO_WRITE(SAMPLE_CLK, PI_HIGH);
         /* #time.sleep(0.0001) */
-    usleep(ising_data->chip_delay);
-    gpioWrite(SAMPLE_CLK, PI_LOW);
+    // usleep(ising_data->chip_delay);
+    GPIO_WRITE(SAMPLE_CLK, PI_LOW);
 
     int bit = 0;
     for (bit = 0; bit < 441; bit++) {
@@ -803,8 +881,8 @@ int ising_cal_energy(IsingData *ising_data)
             break;
         }
 
-        gpioWrite(SCANOUT_CLK, PI_HIGH);
-        gpioWrite(SCANOUT_CLK, PI_LOW);
+        GPIO_WRITE(SCANOUT_CLK, PI_HIGH);
+        GPIO_WRITE(SCANOUT_CLK, PI_LOW);
     }
 
     /* int *hamiltonians = malloc(sizeof(double) * num_samples); */
@@ -910,27 +988,27 @@ int *ising_test_multi_times(
     int res;
 
     /* int energy_ham = ising_cal_energy_ham(...); //# calculate Qbsolv energy once */
-    int energy_ham = 0;
+    // int energy_ham = 0;
     /* int **ising_data_array = _malloc_array2d(400,sample_times); */
 
-    gpioWrite(ALL_ROW_HI, PI_HIGH);
-    gpioWrite(SCANOUT_CLK, PI_LOW);
-    gpioWrite(WEIGHT_EN, PI_HIGH);
-    gpioWrite(WEIGHT_EN, PI_LOW);
+    GPIO_WRITE(ALL_ROW_HI, PI_HIGH);
+    GPIO_WRITE(SCANOUT_CLK, PI_LOW);
+    GPIO_WRITE(WEIGHT_EN, PI_HIGH);
+    GPIO_WRITE(WEIGHT_EN, PI_LOW);
+
 
     while (times < sample_times) {
         if (Verbose_ > 0) {
-            printf("\nSample number %d", times);
+            printf("\nSample number %d\n", times);
         }
         res = ising_cal_energy(ising_data);  //# calculate H energy from chip data
 
         all_results[times] = res;
 
-        if (res < cur_best) {
+        if (res > cur_best) {
             cur_best = res;
             for (int i = 0; i < NUM_GROUPS; i++ ) {
-                // TODO consider how to manage ising_data->num_samples, Assuming num_samples==1 here.
-                solution[i] = ising_data->spins[0][i];
+                solution[i] = ising_data->spins[i];
             }
         }
 
@@ -941,7 +1019,7 @@ int *ising_test_multi_times(
         }
     }
 
-    gpioWrite(ALL_ROW_HI, PI_LOW);
+    GPIO_WRITE(ALL_ROW_HI, PI_LOW);
 
     if (Verbose_ > 0) {
         printf("Finished!\n");
@@ -952,7 +1030,7 @@ int *ising_test_multi_times(
 
 int **ising_init_problem_matrix(int **problem_data, int problem_size)
 {
-    if (problem_size != 59) {
+    if (problem_size > NUM_GROUPS) {
         // TODO? handle problem sizes between 0 and 59?
         printf("Bad problem size: %d\n", problem_size);
         exit(1);
@@ -969,19 +1047,23 @@ int **ising_init_problem_matrix(int **problem_data, int problem_size)
         }
     }
 
+
+    int fill = NUM_GROUPS - problem_size;
     for (int x = 0; x < NUM_GROUPS; x++) {
+        i = COBIFIXED65_BASEGROUPS[x];
         for (int y = 0; y < NUM_GROUPS; y++) {
-            i = COBIFIXED65_BASEGROUPS[x];
+
             j = COBIFIXED65_BASEGROUPS[y];
 
-            m[i][j] = problem_data[x][y];
+            m[62-i][j+1] = problem_data[x][y];
         }
+        m[62-i][i+1] = 7;
     }
 
     return m;
 }
 
-void ising_norm_val(double **val, int **norm, size_t size)
+void ising_norm_val(int **norm, double **ising, size_t size)
 {
     // TODO consider alternate mapping/normalization schemes
     double min = 0;
@@ -992,21 +1074,76 @@ void ising_norm_val(double **val, int **norm, size_t size)
     size_t i,j;
     for (i = 0; i < size; i++) {
         for (j = 0; j < size; j++) {
-            cur_v = val[i][j];
+            cur_v = ising[i][j];
 
             if (cur_v > max) max = cur_v;
             if (cur_v < min) min = cur_v;
         }
     }
 
-    scale_factor = max - min;
-    double b = ((14*min) / scale_factor) + 7;
+    // Linear interpolation from -14 to 14
+    // (y + 14) / (x - min) = 28 / (max - min)
+    // y = (28 / (max - min)) * (x - min) - 14
+    scale_factor = 28 / (max - min);
 
     for (i = 0; i < size; i++) {
-        for (j = 0; j < size; j++) {
-            cur_v = val[i][j];
+        for (j = i; j < size; j++) {
+            cur_v = ising[i][j];
+            if (cur_v == 0) {
+                norm[i][j] = 0;
+                norm[j][i] = 0;
+            } else if (i == j) {
+                  double interpolated = scale_factor * (cur_v - min) - 14;
+                  norm[i][i] = interpolated;
+            } else {
+                double interpolated = scale_factor * (cur_v - min) - 14;
+                int symmetric_val = (int) round(interpolated / 2);
+                norm[i][j] = symmetric_val;
+                norm[j][i] = symmetric_val;
+            }
+        }
+    }
+}
 
-            norm[i][j] = (int) round(((cur_v * 14) / scale_factor) - b);
+void ising_solution_from_qubo_solution(int8_t *ising_soln, int8_t *qubo_soln, int len)
+{
+    // Convert solution to ising formulation
+    for(int i = 0; i < len; i++) {
+        if (qubo_soln[i] == 1) {
+            ising_soln[i] = 1;
+        } else {
+            ising_soln[i] = -1;
+        }
+    }
+}
+
+void qubo_solution_from_ising_solution(int8_t *qubo_soln, int8_t *ising_soln, int len)
+{
+    for(int i = 0; i < len; i++) {
+        if (ising_soln[i] == 1) {
+            qubo_soln[i] = 1;
+        } else {
+            qubo_soln[i] = 0;
+        }
+    }
+}
+
+void ising_from_qubo(double **ising, double **qubo, int size)
+{
+    // qubo is assumed to be an upper triangle matrix
+
+    for (int i = 0; i < size; i++) {
+        // convert linear term
+        int h = qubo[i][i] / 2;
+        // for(int k = i + 1; k < size; k++) {
+        //     // sum over neighbors of i
+        //     h += qubo[i][k] / 2;
+        // }
+        ising[i][i] = h;
+
+        // convert quadratic terms
+        for (int j = i + 1; j < size; j++) {
+            ising[i][j] = qubo[i][j] / 2;
         }
     }
 }
@@ -1019,8 +1156,6 @@ void ising_norm_val(double **val, int **norm, size_t size)
 //         // input_graph = graph_helper.add_calibration(input_graph,"./calibration/cals.txt")
 //         // create_graph.write_prog_from_matrix(input_graph,i)
 //         // self.selected_file = "run_files/all_to_all_graph_write_%i.txt" %i
-
-
 //         // self.programming_bits = self.modify_array_for_pins(input_graph,np.zeros((64,64),dtype=np.int8),63
 //     // TODO? determine how to generalize the problem_size assumption
 //     ising_modify_array_for_pins(val, ising_data->programming_bits, 63);
@@ -1048,35 +1183,44 @@ bool ising_established()
     // return true;
 }
 
-void ising_solver(double **val, int maxNodes, int8_t *Q, int64_t chip_delay)
-{
-    if (ising_init() == 1) {
-        printf("Init failed\n");
-        exit(1);
-    }
-
+void ising_solver(
+    double **qubo, int maxNodes, int8_t *qubo_solution, int num_samples, int chip_delay, bool descend
+) {
     if (maxNodes > 59) {
         printf("Quitting.. ising_solver called with size %d. Cannot be greater than 59.\n", maxNodes);
-        exit(1);
+        exit(2);
     }
 
-    int sample_times = 10; //  # sample times
     int sample_bits = 8;   //# use 8 bits sampling
 
-    IsingData *ising_data = ising_data_mk(maxNodes, chip_delay);
-
+    IsingData *ising_data = ising_data_mk(maxNodes, chip_delay, descend);
+    int8_t *ising_solution = (int8_t*)malloc(sizeof(int8_t) * maxNodes);
+    double **ising = _malloc_double_array2d(maxNodes, maxNodes);
     int **norm_val = _malloc_array2d(maxNodes, maxNodes);
-    ising_norm_val(val, norm_val, maxNodes);
+
+    ising_from_qubo(ising, qubo, maxNodes);
+    ising_norm_val(norm_val, ising, maxNodes);
 
     int **mtx = ising_init_problem_matrix(norm_val, maxNodes);
     ising_modify_array_for_pins(mtx, ising_data->programming_bits, 63);
-    // ising_bit_stream_generate_adj(ising_data, norm_val, maxNodes);
 
-    ising_test_multi_times(ising_data, sample_times, sample_bits, maxNodes, Q);
+    // Convert solution from QUBO to ising
+    ising_solution_from_qubo_solution(ising_solution, qubo_solution, maxNodes);
 
+    //
+    int *results = ising_test_multi_times(
+        ising_data, num_samples, sample_bits, maxNodes, ising_solution
+    );
+
+    // Convert ising solution back to QUBO form
+    qubo_solution_from_ising_solution(qubo_solution, ising_solution, maxNodes);
+
+    free(results);
     free_ising_data(ising_data);
-    _free_array2d(norm_val, maxNodes);
-    _free_array2d(mtx, 64);
+    free(ising_solution);
+    _free_array2d((void**)ising, maxNodes);
+    _free_array2d((void**)norm_val, maxNodes);
+    _free_array2d((void**)mtx, 64);
 
     // printf("Results:\n--\n");
     // int i;
@@ -1094,6 +1238,10 @@ void ising_solver(double **val, int maxNodes, int8_t *Q, int64_t chip_delay)
 
 void ising_close()
 {
+    if (Verbose_ > 0) {
+        printf("pigpio clean up\n");
+    }
+
     gpioTerminate();
 }
 

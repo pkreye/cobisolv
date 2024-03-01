@@ -4,6 +4,14 @@ extern "C" {
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
+#include <pigpio.h>
+
+#define GPIO_WRITE(pin, val)                                            \
+    if (gpioWrite(pin, val) != 0) {                                     \
+        printf("\n ERROR: bad gpio write: %s(%s.%d)\n\n", __FUNCTION__, __FILE__, __LINE__); \
+        exit(9);                                                        \
+    }
 
 typedef struct IsingData {
     size_t probSize;
@@ -12,11 +20,14 @@ typedef struct IsingData {
     int **programming_bits;
     uint8_t *chip2_test;
     int num_samples;
-    int **spins;
+    int *spins;
     int64_t chip_delay;
+    bool descend;
     /* int **graph_arr; */
     /* uint8_t *samples; */
 } IsingData;
+
+/* void ising_from_qubo(double **qubo, size_t, double **ising); */
 
 bool ising_established(void);
 
@@ -24,7 +35,7 @@ int ising_init(void);
 
 void ising_close(void);
 
-void ising_solver(double **, int, int8_t *, int64_t);
+void ising_solver(double **, int, int8_t *, int, int, bool);
 
 #ifdef __cplusplus
 }
