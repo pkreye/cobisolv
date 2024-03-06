@@ -647,7 +647,7 @@ parameters_t default_parameters() {
     param.seed = 17932241798878;
     param.ising_delay = 100;
     param.ising_num_samples = 10;
-    param.ising_descend = false;
+    param.ising_descend = true;
     return param;
 }
 
@@ -678,8 +678,7 @@ parameters_t default_parameters() {
 // @param[out] Qindex order of entries in the solution table
 // @param QLEN Number of entries in the solution table
 // @param[in,out] param Other parameters to the solve method that have default values.
-void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *energy_list, int *solution_counts,
-           int *Qindex, int QLEN, parameters_t *param) {
+void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *energy_list, int *solution_counts, int *Qindex, int QLEN, parameters_t *param, bool delimitedOutput) {
     double *flip_cost, energy;
     int *TabuK, *index, start_;
     int8_t *solution, *tabu_solution;
@@ -1030,10 +1029,12 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
         //     sign * Simple_evaluate(Qbest, qubo_size, (const double **)qubo));
         currentTime = omp_get_wtime() - initialStartTime;
 
-        print_delimited_output(
-            qubo_size, Qbest, numPartCalls, best_energy * sign,  param,
-            currentTime, initialTabuTime, globalTabuTime, subQuboTime
-        );
+        if (delimitedOutput) {
+            print_delimited_output(
+                qubo_size, Qbest, numPartCalls, best_energy * sign,  param,
+                currentTime, initialTabuTime, globalTabuTime, subQuboTime
+            );
+        }
     } else if (Verbose_ > 0){
         Qbest = &solution_list[Qindex[0]][0];
         best_energy = energy_list[Qindex[0]];

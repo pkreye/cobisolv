@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
 
     parameters_t param = default_parameters();
 
-    bool unixStyleOutput = false;
+    bool delimitedOutput = false;
 
     // Sub sampler flags
     bool use_dwave = false;
@@ -110,9 +110,9 @@ int main(int argc, char *argv[]) {
                                        {"Algo", required_argument, NULL, 'a'},
                                        {"preSearchPassFactor", required_argument, NULL, 'p'},
                                        {"globalSearchPassFactor", required_argument, NULL, 'g'},
-                                       {"unixOutput", no_argument, NULL, 'u'},
                                        {"useIsing", no_argument, NULL, 'I'},
-                                       {"isingChipDelay", required_argument, NULL, 'd'},
+                                       {"delimitedOutput", no_argument, NULL, 'd'},
+                                       {"isingChipDelay", required_argument, NULL, 'u'},
                                        {"useRandom", no_argument, NULL, 'R'},
                                        {"useNull", no_argument, NULL, 'N'},
                                        {"isingNumSamples", required_argument, NULL, 'z'},
@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
         use_dwave = true;
     }
 
-    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:uId:RNz:D", longopts, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:IdRNz:Du:", longopts, &option_index)) != -1) {
         switch (opt) {
             case 'a':
                 strcpy(algo_, optarg);  // algorithm copied off of command line -a option
@@ -234,14 +234,14 @@ int main(int argc, char *argv[]) {
                 param.globalSearchPassFactor = strtol(optarg, &chx, 10);
                 break;
             case 'u':
-                unixStyleOutput = true;
+                // Get delay to use when waiting for ising chip, in microsecond
+                param.ising_delay = strtol(optarg, &chx, 10);
                 break;
             case 'I':
                 use_ising = true;
                 break;
             case 'd':
-                // Get delay to use when waiting for ising chip, in microsecond
-                param.ising_delay = strtol(optarg, &chx, 10);
+                delimitedOutput = true;
                 break;
             case 'R':
                 use_rand = true;
@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
                 param.ising_num_samples = strtol(optarg, &chx, 10);
                 break;
             case 'D':
-                param.ising_descend = true;
+                param.ising_descend = false;
                 break;
 
             default: /* '?' or unknown */
@@ -325,10 +325,6 @@ int main(int argc, char *argv[]) {
     }
 
 
-    /* if (!unixStyleOutput) { */
-    /*     print_opts(maxNodes_, &param); */
-    /* } */
-
     // get some memory for storing and shorting Q bit vectors
     int QLEN = 20;  // the max number of solutions to store in soltuion_lists
     if (strncmp(&algo_[0], "o", strlen("o")) == 0) {
@@ -346,7 +342,7 @@ int main(int argc, char *argv[]) {
     if (GETMEM(solution_counts, int, QLEN + 1) == NULL) BADMALLOC
     if (GETMEM(Qindex, int, QLEN + 1) == NULL) BADMALLOC
 
-    solve(val, maxNodes_, solution_list, energy_list, solution_counts, Qindex, QLEN, &param);
+    solve(val, maxNodes_, solution_list, energy_list, solution_counts, Qindex, QLEN, &param, delimitedOutput);
 
     free(solution_list);
     free(energy_list);

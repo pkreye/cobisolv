@@ -857,14 +857,14 @@ int ising_cal_energy(IsingData *ising_data)
 {
     /* #if sample_index%3==0: */
     GPIO_WRITE(ROSC_EN, PI_LOW);
-    GPIO_WRITE(ROSC_EN, PI_HIGH);
+    GPIO_WRITE_DELAY(ROSC_EN, PI_HIGH, ising_data->chip_delay);
 
-    usleep(ising_data->chip_delay);
+    // usleep(ising_data->chip_delay);
 
-    GPIO_WRITE(SAMPLE_CLK, PI_HIGH);
+    GPIO_WRITE_DELAY(SAMPLE_CLK, PI_HIGH, ising_data->chip_delay);
         /* #time.sleep(0.0001) */
     // usleep(ising_data->chip_delay);
-    GPIO_WRITE(SAMPLE_CLK, PI_LOW);
+    GPIO_WRITE_DELAY(SAMPLE_CLK, PI_LOW, ising_data->chip_delay);
 
     int bit = 0;
     for (bit = 0; bit < 441; bit++) {
@@ -994,7 +994,7 @@ int *ising_test_multi_times(
     GPIO_WRITE(ALL_ROW_HI, PI_HIGH);
     GPIO_WRITE(SCANOUT_CLK, PI_LOW);
     GPIO_WRITE(WEIGHT_EN, PI_HIGH);
-    GPIO_WRITE(WEIGHT_EN, PI_LOW);
+    GPIO_WRITE_DELAY(WEIGHT_EN, PI_LOW, ising_data->chip_delay);
 
 
     while (times < sample_times) {
