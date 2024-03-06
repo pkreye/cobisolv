@@ -998,7 +998,7 @@ int *ising_test_multi_times(
 
 
     while (times < sample_times) {
-        if (Verbose_ > 0) {
+        if (Verbose_ > 2) {
             printf("\nSample number %d\n", times);
         }
         res = ising_cal_energy(ising_data);  //# calculate H energy from chip data
@@ -1014,14 +1014,14 @@ int *ising_test_multi_times(
 
         times += 1;
 
-        if (Verbose_ > 0) {
+        if (Verbose_ > 2) {
             printf(", best = %d ",  cur_best);
         }
     }
 
     GPIO_WRITE(ALL_ROW_HI, PI_LOW);
 
-    if (Verbose_ > 0) {
+    if (Verbose_ > 2) {
         printf("Finished!\n");
     }
 

@@ -1034,6 +1034,8 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                 qubo_size, Qbest, numPartCalls, best_energy * sign,  param,
                 currentTime, initialTabuTime, globalTabuTime, subQuboTime
             );
+        } else {
+            print_output(qubo_size, Qbest, numPartCalls, best_energy * sign, CPSECONDS, param);
         }
     } else if (Verbose_ > 0){
         Qbest = &solution_list[Qindex[0]][0];

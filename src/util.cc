@@ -247,7 +247,7 @@ void print_delimited_output(int maxNodes, int8_t *solution, long numPartCalls, d
     // for (i = 0; i < maxNodes; i++) {
     //     fprintf(outFile_, "%d", solution[i]);
     // }
-    fprintf(outFile_, "%s,%d,%d,%8.1f,%ld,%8.4f,%8.4f,%8.4f,%8.4f,%lld\n",
+    fprintf(outFile_, "%s,%d,%d,%.1f,%ld,%.4f,%.4f,%.4f,%.4f,%lld\n",
             param->problemName,
             param->preSearchPassFactor,
             param->globalSearchPassFactor,

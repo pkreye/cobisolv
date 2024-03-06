@@ -1,0 +1,44 @@
+To solve sub-qubo problems on the ising solver you will need to invoke qbsolv with `sudo`.
+
+================
+New qbsolv args
+================
+-I
+If present, use ising chip to solve sub-problems.
+
+-z numSamples
+Number of solutions to sample from ising chip.
+
+-p preSearchPassFactor
+Scale the amount of classical tabu search to be performed before decomposing problem to
+sub-problems.
+
+-g globalSearchPassFactor
+Scale the amount of classical tabu search to be performed between each round of sub-problem
+solutions.
+
+-d
+Final output will be printed as comma delimited data, allowing for aggregation of multiple runs in a
+single data file.
+
+
+=========
+Examples:
+=========
+
+$ ./qbsolv -I -i ./data/bqp100_5.qubo
+
+$ ./qbsolv -p 100 -g 200 -z 5 -I -i ./data/bqp100_5.qubo
+
+======
+Output
+======
+Delimited output has the format:
+
+input file name, preSearchPassFactor, globalSearchPassFactor, final energy, Number of subproblems
+solved, pre search tabu time, global search tabu time, Time solving subproblems, total time, prng seed
+
+
+Eg:
+$ sudo ./qbsolv -I -d -r 321 -m -p 0 -g 100 -i ./data/bqp500_2.qubo
+./data/bqp500_2.qubo  0  100  128339.0 192    0.0000   1.3830   4.5385   5.9957 321
