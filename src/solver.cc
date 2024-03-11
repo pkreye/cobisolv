@@ -648,7 +648,7 @@ parameters_t default_parameters() {
     param.seed = 17932241798878;
     param.ising_delay = 100;
     param.ising_num_samples = 10;
-    param.ising_descend = true;
+    param.ising_descend = false;
     return param;
 }
 

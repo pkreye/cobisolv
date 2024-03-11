@@ -7,6 +7,7 @@ See `qbsolv -q` for documentation of input format.
 ================
 New qbsolv args
 ================
+
 -I
 If present, use ising chip to solve sub-problems.
 
@@ -25,7 +26,6 @@ solutions. Defaults to 0. Standard qbsolv uses 1700.
 Final output will be printed as comma delimited data, allowing for aggregation of multiple runs in a
 single data file.
 
-
 =========
 Examples:
 =========
@@ -40,7 +40,6 @@ Output
 Delimited output has the format:
 
 input file name, preSearchPassFactor, globalSearchPassFactor, finalEnergy, num sub-qubos solved, pre tabu search time, global tabu search time, time spent on sub-problems, total time, prng seed
-
 
 Eg:
 $ sudo ./qbsolv -I -d -r 321 -m -p 0 -g 100 -i ./data/bqp500_2.qubo

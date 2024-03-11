@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
                 param.ising_num_samples = strtol(optarg, &chx, 10);
                 break;
             case 'D':
-                param.ising_descend = false;
+                param.ising_descend = true;
                 break;
 
             default: /* '?' or unknown */
