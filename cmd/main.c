@@ -20,7 +20,6 @@
 	#include <getopt.h>
 #endif // _WIN32
 
-
 #include "dwsolv.h"
 #include "ising.h"
 #include "qbsolv.h"
@@ -185,8 +184,7 @@ int main(int argc, char *argv[]) {
                 if (param.sub_size < 10) {
                     // other settings, this could be setting it from true above to false here.
                     if (param.sub_size != 0) {
-                        fprintf(stderr, "\n Error --  SubMatrix must be 0 or greater than 10.  -S %d\n ",
-                                param.sub_size);
+                        fprintf(stderr, "\n Error --  SubMatrix must be 0 or greater than 10.  -S %d\n ", param.sub_size);
                         ++errorCount;
                     }
                 }

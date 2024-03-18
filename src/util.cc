@@ -210,14 +210,16 @@ void print_opts(int maxNodes, parameters_t *param) {
 
 //  This routine performs the standard output for qbsolv
 //
-void print_output(int maxNodes, int8_t *solution, long numPartCalls, double energy, double seconds,
-                  parameters_t *param) {
+    //  This routine performs the standard output for qbsolv
+//
+void print_output(int maxNodes, int8_t *solution, long numPartCalls, double energy, parameters_t *param)
+{
     int i;
 
-    if (numsolOut_ > 0) {
-        print_opts(maxNodes, param);
-    }
-    numsolOut_++;
+    // if (numsolOut_ > 0) {
+    //     print_opts(maxNodes, param);
+    // }
+    // numsolOut_++;
     for (i = 0; i < maxNodes; i++) {
         fprintf(outFile_, "%d", solution[i]);
     }
@@ -225,8 +227,7 @@ void print_output(int maxNodes, int8_t *solution, long numPartCalls, double ener
     fprintf(outFile_, "Initial pass factor: %ld\n", param->preSearchPassFactor);
     fprintf(outFile_, "Global pass factor: %ld\n", param->globalSearchPassFactor);
     fprintf(outFile_, "%8.5f Energy of solution\n", energy);
-    fprintf(outFile_, "%ld Number of Partitioned calls, %d output sample \n", numPartCalls, numsolOut_);
-    fprintf(outFile_, "%8.5f seconds of classic cpu time", seconds);
+    fprintf(outFile_, "%ld Number of Partitioned calls \n", numPartCalls);
     if (TargetSet_) {
         fprintf(outFile_, " ,Target of %8.5f\n", Target_);
     } else {
@@ -234,11 +235,21 @@ void print_output(int maxNodes, int8_t *solution, long numPartCalls, double ener
     }
 }
 
+void print_output_with_subprob_time(
+    int maxNodes, int8_t *solution, long numPartCalls, double energy,
+    double totalTime,  double subQuboTime, parameters_t *param
+) {
+    print_output(maxNodes, solution, numPartCalls, energy, param);
+    fprintf(outFile_, "%8.5f seconds solving sub-problems\n", subQuboTime);
+    fprintf(outFile_, "%8.5f seconds of total run time\n", totalTime);
+}
+
 //  This routine performs the output in a tabular format.
 //
-void print_delimited_output(int maxNodes, int8_t *solution, long numPartCalls, double energy, parameters_t *param,
-                     double totalTime, double initialTabuTime, double globalTabuTime, double subQuboTime
-                    ) {
+void print_delimited_output(
+    int maxNodes, int8_t *solution, long numPartCalls, double energy, double totalTime,
+    double initialTabuTime, double globalTabuTime, double subQuboTime, parameters_t *param
+) {
     // int i;
     // if (numsolOut_ > 0) {
     //     print_opts(maxNodes, param);

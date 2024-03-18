@@ -22,7 +22,6 @@
 #include <omp.h>
 
 #include <math.h>
-#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -420,8 +419,7 @@ double tabu_search(int8_t *solution, int8_t *best, uint qubo_size, double **qubo
 // @param qubo_size is the number of variables in the large QUBO matrix
 // @param[out] sub_qubo is the returned subQUBO
 // @param[out] sub_solution is a current solution on the subQUBO
-void reduce(int *Icompress, double **qubo, uint sub_qubo_size, uint qubo_size, double **sub_qubo, int8_t *solution,
-            int8_t *sub_solution) {
+void reduce(int *Icompress, double **qubo, uint sub_qubo_size, uint qubo_size, double **sub_qubo, int8_t *solution, int8_t *sub_solution) {
     // clean out the subMatrix
     for (uint i = 0; i < sub_qubo_size; i++) {                          // for each column
         for (uint j = 0; j < sub_qubo_size; j++) sub_qubo[i][j] = 0.0;  // for each row
@@ -523,7 +521,10 @@ double solv_submatrix(int8_t *solution, int8_t *best, uint qubo_size, double **q
 // @param[out] stores the new, projected solution found during the algorithm
 int reduce_solve_projection(int *Icompress, double **qubo, int qubo_size, int subMatrix, int8_t *solution, parameters_t *param) {
     int change = 0;
-    int8_t *sub_solution = (int8_t *)malloc(sizeof(int8_t) * subMatrix);
+    int8_t *sub_solution;
+    //(int8_t *)malloc(sizeof(int8_t) * subMatrix);
+    if (GETMEM(sub_solution, int8_t, subMatrix) == NULL) BADMALLOC
+
     double **sub_qubo;
 
     sub_qubo = (double **)malloc2D(qubo_size, qubo_size, sizeof(double));
@@ -799,7 +800,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
 
     val_index_sort(index, flip_cost, qubo_size);  // create index array of sorted values
     if (Verbose_ > 0) {
-        print_output(qubo_size, solution, numPartCalls, best_energy * sign, CPSECONDS, param);
+        print_output(qubo_size, solution, numPartCalls, best_energy * sign, param);
     }
     if (Verbose_ > 1) {
         DLT;
@@ -828,7 +829,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
     // outer loop begin
     while (ContinueWhile) {
         // these are of the size that will use updates from submatrix processing
-        if ((qubo_size > 20 && subMatrix <= qubo_size) || TabuPass_factor == 0) {
+        if ((qubo_size > 20 && subMatrix <= qubo_size)) {
             if (strncmp(&algo_[0], "o", strlen("o")) == 0) {
                 // use the first "remove" index values to remove rows and columns from new matrix
                 // initial TabuK to nothing tabu sub_solution[i] = Q[i];
@@ -847,8 +848,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
             }
 
             // begin submatrix passes
-            if (NoProgress % Progress_check ==
-                (Progress_check - 1)) {  // every Progress_check (th) loop without progess
+            if (NoProgress % Progress_check == (Progress_check - 1)) {  // every Progress_check (th) loop without progess
                 // reset completely
                 // solution_population( solution, solution_list, num_nq_solutions, qubo_size, Qindex);
                 randomize_solution(solution, qubo_size);
@@ -966,7 +966,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                 printf(" IMPROVEMENT; RepeatPass set to %d\n", RepeatPass);
             }
             if (Verbose_ > 0) {
-                print_output(qubo_size, Qbest, numPartCalls, best_energy * sign, CPSECONDS, param);
+                print_output(qubo_size, Qbest, numPartCalls, best_energy * sign, param);
             }
         } else if (result.code == DUPLICATE_ENERGY ||
                    result.code == DUPLICATE_HIGHEST_ENERGY) {  // equal solution, but it is different
@@ -979,7 +979,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
             }
             if (result.code == DUPLICATE_HIGHEST_ENERGY && result.count == 1) {
                 if (Verbose_ > 0) {
-                    print_output(qubo_size, Qbest, numPartCalls, best_energy * sign, CPSECONDS, param);
+                    print_output(qubo_size, Qbest, numPartCalls, best_energy * sign, param);
                 }
             }
         } else if (result.code == NOTHING) {  // not as good as our worst so far
@@ -1012,7 +1012,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
             }
         }
 
-        currentTime = omp_get_wtime() - initialStartTime;
+        currentTime = CPSECONDS;
         // timeout test
         if (currentTime >= Time_) {
             ContinueWhile = false;
@@ -1023,28 +1023,35 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
     // all done print results if needed and free allocated arrays
     if (WriteMatrix_) print_solution_and_qubo(Qbest, qubo_size, qubo);
 
+    Qbest = &solution_list[Qindex[0]][0];
+    best_energy = energy_list[Qindex[0]];
+
     if (Verbose_ == 0) {
-        Qbest = &solution_list[Qindex[0]][0];
-        best_energy = energy_list[Qindex[0]];
         // printf(" evaluated solution %8.2lf\n",
         //     sign * Simple_evaluate(Qbest, qubo_size, (const double **)qubo));
-        currentTime = omp_get_wtime() - initialStartTime;
+        double finalTime = omp_get_wtime() - initialStartTime;
 
         if (delimitedOutput) {
             print_delimited_output(
-                qubo_size, Qbest, numPartCalls, best_energy * sign,  param,
-                currentTime, initialTabuTime, globalTabuTime, subQuboTime
+                qubo_size, Qbest, numPartCalls, best_energy * sign,
+                finalTime, initialTabuTime, globalTabuTime, subQuboTime, param
             );
         } else {
-            print_output(qubo_size, Qbest, numPartCalls, best_energy * sign, CPSECONDS, param);
+            print_output_with_subprob_time(
+                qubo_size, Qbest, numPartCalls, best_energy * sign,
+                finalTime, subQuboTime, param
+            );
         }
     } else if (Verbose_ > 0){
         Qbest = &solution_list[Qindex[0]][0];
         best_energy = energy_list[Qindex[0]];
         // printf(" evaluated solution %8.2lf\n",
         //     sign * Simple_evaluate(Qbest, qubo_size, (const double **)qubo));
-
-        print_output(qubo_size, Qbest, numPartCalls, best_energy * sign, CPSECONDS, param);
+        double finalTime = omp_get_wtime() - initialStartTime;
+        print_output_with_subprob_time(
+            qubo_size, Qbest, numPartCalls, best_energy * sign,
+            finalTime, subQuboTime, param
+        );
     }
 
     free(solution);
