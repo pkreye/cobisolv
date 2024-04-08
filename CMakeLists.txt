@@ -1,14 +1,19 @@
-  cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.0)
 
-set(CMAKE_TOOLCHAIN_FILE ./Toolchain-RasberryPi.cmake)
+option(COBISOLV_CROSS_COMPILE_RPI "Cross compile for Raspberry Pi." OFF)
+option(COBISOLV_BUILD_STATIC "Build static executable." ON)
+option(COBISOLV_BUILD_CMD "Build compiled command line interface." ON)
+option(COBISOLV_BUILD_TESTS "Build c library unit tests." OFF)
+
+
+if(COBISOLV_CROSS_COMPILE_RPI)
+  set(CMAKE_TOOLCHAIN_FILE ./Toolchain-RasberryPi.cmake)
+endif()
 
 project(cobisolv)
 # set(VERSION_MAJOR 2)
 # set(VERSION_MINOR 5)
 # set(VERSION_PATCH 0)
-
-option(COBISOLV_BUILD_CMD "Build compiled command line interface." ON)
-option(COBISOLV_BUILD_TESTS "Build c library unit tests." OFF)
 
 # Set compiler flags for gcc and clang
 if(NOT CMAKE_BUILD_TYPE)
@@ -36,7 +41,6 @@ endif()
 # location of header files
 include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include
 ${PROJECT_SOURCE_DIR}/cmd)
-# /home/foobar/tools/pigpio-arm
 
 #
 #link_directories(/home/foobar/tools/pigpio-arm)

@@ -1,26 +1,10 @@
-.. image:: https://img.shields.io/pypi/v/dwave-qbsolv.svg
-    :target: https://pypi.python.org/pypi/dwave-qbsolv
-
-.. image:: https://codecov.io/gh/dwavesystems/qbsolv/branch/master/graph/badge.svg
-    :target: https://codecov.io/gh/dwavesystems/qbsolv
-
-.. image:: https://travis-ci.org/dwavesystems/qbsolv.svg?branch=master
-    :target: https://travis-ci.org/dwavesystems/qbsolv
-
-.. image:: https://ci.appveyor.com/api/projects/status/y2f7rqxvepn4ak4b/branch/master?svg=true
-    :target: https://ci.appveyor.com/project/dwave-adtt/qbsolv/branch/master
-
-.. image:: https://readthedocs.com/projects/d-wave-systems-qbsolv/badge/?version=latest
-    :target: https://docs.ocean.dwavesys.com/projects/qbsolv/en/latest/?badge=latest
-
-.. image:: https://circleci.com/gh/dwavesystems/qbsolv.svg?style=svg
-    :target: https://circleci.com/gh/dwavesystems/qbsolv
-
 ======
-Qbsolv
+Cobisolv
 ======
 
-**NOTICE**: This repository is deprecated as of the end of 2021. Support will be
+This repository is extends `qbsolv <https://github.com/dwavesystems/qbsolv>`_ to support COBI
+
+deprecated as of the end of 2021. Support will be
 discontinued after March 2022. Please update your code to use Ocean's
 `dwave-hybrid <https://docs.ocean.dwavesys.com/en/stable/docs_hybrid/sdk_index.html>`_
 or Leap's quantum-classical
@@ -34,8 +18,6 @@ optimization (QUBO) problem by splitting it into pieces. The pieces are solved u
 classical solver running the tabu algorithm. qbsolv also enables configuring a D-Wave
 system as the solver.
 
-.. Note:: Access to a D-Wave system must be arranged separately.
-
 .. index-end-marker
 
 Installation or Building
@@ -43,28 +25,10 @@ Installation or Building
 
 .. installation-start-marker
 
-Python
-------
-
-A wheel might be available for your system on PyPI. Source distributions are provided as well.
-
-.. code-block:: python
-
-    pip install dwave-qbsolv
-
-
-Alternatively, you can build the library with setuptools.
-
-.. code-block:: bash
-
-    pip install -r python/requirements.txt
-    python setup.py install
-
 C
 -
-
-To build the C library use cmake to generate a build command for your system. On Linux the commands would be something
-like this:
+To build the C library install `pigpio <https://github.com/joan2937/pigpio>`_, then use cmake to
+generate a build command for your system. On Linux the commands would be something like this:
 
 .. code-block:: bash
 
@@ -75,6 +39,8 @@ like this:
 To build the command line interface turn the cmake option `QBSOLV_BUILD_CMD` on. The command line option for cmake to do
 this would be `-DQBSOLV_BUILD_CMD=ON`. To build the tests turn the cmake option `QBSOLV_BUILD_TESTS` on. The command
 line option for cmake to do this would be `-DQBSOLV_BUILD_TESTS=ON`.
+
+For cross compiling to Raspberry Pi
 
 .. installation-end-marker
 
@@ -104,15 +70,30 @@ Options are as follows:
 
 .. code::
 
+   -I
+   If present, use cobi chip to solve sub-problems.
+
+   -z numSamples
+   Number of solutions to sample from cobi chip. Defaults to 10.
+
+   -p preSearchPassFactor
+   Scale the amount of classical tabu search to be performed before decomposing problem to
+   sub-problems. Defaults to 0. Standard qbsolv uses 6500.
+
+   -g globalSearchPassFactor
+   Scale the amount of classical tabu search to be performed between each round of sub-problem
+   solutions. Defaults to 0. Standard qbsolv uses 1700.
+
+   -d
+   Final output will be printed as comma delimited data, allowing for aggregation of multiple runs in a
+   single data file.
+
+
     -i infile
         Name of the file for the input QUBO. This option is mandatory.
     -o outfile
         Optional output filename.
         Default is the standard output.
-    -a algorithm
-        Optional selection for the outer loop algorithm.  Default is o.
-        'o' for original qbsolv method. Submatrix based upon change in energy.
-        'p' for path relinking.  Submatrix based upon differences of solutions
     -m
         Optional selection of finding the maximum instead of the minimum.
     -T target
@@ -153,7 +134,7 @@ Options are as follows:
 
 .. usage-end-marker
 
-qbsolv QUBO Input File Format
+QUBO Input File Format
 =============================
 
 .. format-start-marker

@@ -1,5 +1,6 @@
 /*
  Copyright 2017 D-Wave Systems Inc.
+ Copyright 2024 Peter Kreye
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -75,7 +76,7 @@ int main(int argc, char *argv[]) {
     char *inFileName = NULL;
     FILE *inFile = NULL;
 
-    strcpy(pgmName_, "qbsolv");
+    strcpy(pgmName_, "cobisolv");
     findMax_ = false;
     Verbose_ = 0;
     strcpy(algo_, "o");  // algorithm default
