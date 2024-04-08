@@ -41,9 +41,9 @@ typedef struct parameters_t {
     int32_t preSearchPassFactor;
     int32_t globalSearchPassFactor;
 
-    int ising_delay;
-    int ising_num_samples;
-    bool ising_descend;
+    int cobi_delay;
+    int cobi_num_samples;
+    bool cobi_descend;
 
     int64_t seed;
 
@@ -58,8 +58,8 @@ void dw_sub_sample(double** sub_qubo, int subMatrix, int8_t* sub_solution, void*
 // Callback for `solve` to use tabu on subproblems
 void tabu_sub_sample(double** sub_qubo, int subMatrix, int8_t* sub_solution, void*);
 
-// Callback for `solve` to use ising chip on subproblems
-void ising_sub_sample(double** sub_qubo, int subMatrix, int8_t* sub_solution, void*);
+// Callback for `solve` to use cobi chip on subproblems
+void cobi_sub_sample(double** sub_qubo, int subMatrix, int8_t* sub_solution, void*);
 
 // Callback for `solve` to generate random solutions on subproblems
 void rand_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *);

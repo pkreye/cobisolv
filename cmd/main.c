@@ -21,7 +21,7 @@
 #endif // _WIN32
 
 #include "dwsolv.h"
-#include "ising.h"
+#include "cobi.h"
 #include "qbsolv.h"
 #include "readqubo.h"
 #include "util.h"
@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
 
     // Sub sampler flags
     bool use_dwave = false;
-    bool use_ising = false;
+    bool use_cobi = false;
     bool use_rand  = false;
     bool use_null  = false;
 
@@ -109,13 +109,13 @@ int main(int argc, char *argv[]) {
                                        {"Algo", required_argument, NULL, 'a'},
                                        {"preSearchPassFactor", required_argument, NULL, 'p'},
                                        {"globalSearchPassFactor", required_argument, NULL, 'g'},
-                                       {"useIsing", no_argument, NULL, 'I'},
+                                       {"useCobi", no_argument, NULL, 'I'},
                                        {"delimitedOutput", no_argument, NULL, 'd'},
-                                       {"isingChipDelay", required_argument, NULL, 'u'},
+                                       {"cobiChipDelay", required_argument, NULL, 'u'},
                                        {"useRandom", no_argument, NULL, 'R'},
                                        {"useNull", no_argument, NULL, 'N'},
-                                       {"isingNumSamples", required_argument, NULL, 'z'},
-                                       {"isingDescend", no_argument, NULL, 'D'},
+                                       {"cobiNumSamples", required_argument, NULL, 'z'},
+                                       {"cobiDescend", no_argument, NULL, 'D'},
                                        {NULL, no_argument, NULL, 0}};
 
     int opt, option_index = 0;
@@ -190,7 +190,7 @@ int main(int argc, char *argv[]) {
                 }
 
                 use_dwave = false;  // explicit setting of Submatrix says to use tabu solver, regardless of other
-                use_ising = false;
+                use_cobi = false;
                 if (param.sub_size == 0) {
                     use_dwave = true;  // except where -S 0
                 }
@@ -232,11 +232,11 @@ int main(int argc, char *argv[]) {
                 param.globalSearchPassFactor = strtol(optarg, &chx, 10);
                 break;
             case 'u':
-                // Get delay to use when waiting for ising chip, in microsecond
-                param.ising_delay = strtol(optarg, &chx, 10);
+                // Get delay to use when waiting for cobi chip, in microsecond
+                param.cobi_delay = strtol(optarg, &chx, 10);
                 break;
             case 'I':
-                use_ising = true;
+                use_cobi = true;
                 break;
             case 'd':
                 delimitedOutput = true;
@@ -248,11 +248,11 @@ int main(int argc, char *argv[]) {
                 use_null = true;
                 break;
             case 'z':
-                // Number of samples to take when solving a subqubo with the ising chip
-                param.ising_num_samples = strtol(optarg, &chx, 10);
+                // Number of samples to take when solving a subqubo with the cobi chip
+                param.cobi_num_samples = strtol(optarg, &chx, 10);
                 break;
             case 'D':
-                param.ising_descend = true;
+                param.cobi_descend = true;
                 break;
 
             default: /* '?' or unknown */
@@ -293,24 +293,24 @@ int main(int argc, char *argv[]) {
     }
     numsolOut_ = 0;
 
-    if (use_ising && ising_established()) {
-        if (ising_init() != 0) {
+    if (use_cobi && cobi_established()) {
+        if (cobi_init() != 0) {
             printf("Init failed\n");
             exit(1);
         }
 
-        if (atexit(ising_close) != 0) {
+        if (atexit(cobi_close) != 0) {
             fprintf(stderr, "Failed to register exit function\n");
             exit(1);
         }
 
-        if (param.ising_num_samples < 1) {
+        if (param.cobi_num_samples < 1) {
             fprintf(stderr, "Number of samples must be greater than 0.\n");
             exit(2);
         }
 
         param.sub_size = 59;
-        param.sub_sampler = &ising_sub_sample;
+        param.sub_sampler = &cobi_sub_sample;
         param.sub_sampler_data = &param;
     }
 
@@ -353,8 +353,8 @@ int main(int argc, char *argv[]) {
     }
 
     /* // should have been registered via atexit */
-    /* if (use_ising) { */
-    /*     ising_close(); */
+    /* if (use_cobi) { */
+    /*     cobi_close(); */
     /* } */
 
     if (Verbose_ > 3) {

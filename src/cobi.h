@@ -24,7 +24,7 @@ int usleep(long usecs);
     usleep(delay);
 
 
-typedef struct IsingData {
+typedef struct CobiData {
     size_t probSize;
     size_t w;
     size_t h;
@@ -39,17 +39,17 @@ typedef struct IsingData {
     int *prev_spins;
     /* int **graph_arr; */
     /* uint8_t *samples; */
-} IsingData;
+} CobiData;
 
-/* void ising_from_qubo(double **qubo, size_t, double **ising); */
+/* void cobi_from_qubo(double **qubo, size_t, double **cobi); */
 
-bool ising_established(void);
+bool cobi_established(void);
 
-int ising_init(void);
+int cobi_init(void);
 
-void ising_close(void);
+void cobi_close(void);
 
-void ising_solver(double **, int, int8_t *, int, int, bool);
+void cobi_solver(double **, int, int8_t *, int, int, bool);
 
 #ifdef __cplusplus
 }

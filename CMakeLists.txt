@@ -2,13 +2,13 @@
 
 set(CMAKE_TOOLCHAIN_FILE ./Toolchain-RasberryPi.cmake)
 
-project(qbsolv)
+project(cobisolv)
 # set(VERSION_MAJOR 2)
 # set(VERSION_MINOR 5)
 # set(VERSION_PATCH 0)
 
-option(QBSOLV_BUILD_CMD "Build compiled command line interface." ON)
-option(QBSOLV_BUILD_TESTS "Build c library unit tests." OFF)
+option(COBISOLV_BUILD_CMD "Build compiled command line interface." ON)
+option(COBISOLV_BUILD_TESTS "Build c library unit tests." OFF)
 
 # Set compiler flags for gcc and clang
 if(NOT CMAKE_BUILD_TYPE)
@@ -42,22 +42,22 @@ ${PROJECT_SOURCE_DIR}/cmd)
 #link_directories(/home/foobar/tools/pigpio-arm)
 
 # Object Library
-add_library(solver OBJECT src/solver.cc src/util.cc src/dwsolv.cc src/ising.cc)
+add_library(solver OBJECT src/solver.cc src/util.cc src/dwsolv.cc src/cobi.cc)
 
 # static library
-add_library(libqbsolv STATIC $<TARGET_OBJECTS:solver> src/util.cc src/dwsolv.cc src/ising.cc)
-set_target_properties(libqbsolv PROPERTIES PREFIX "")
+add_library(libcobisolv STATIC $<TARGET_OBJECTS:solver> src/util.cc src/dwsolv.cc src/cobi.cc)
+set_target_properties(libcobisolv PROPERTIES PREFIX "")
 
-if(QBSOLV_BUILD_CMD)
+if(COBISOLV_BUILD_CMD)
     # compile main executable
-    add_executable(qbsolv cmd/main.c cmd/readqubo.c)
+    add_executable(cobisolv cmd/main.c cmd/readqubo.c)
 
     # link library
-    target_link_libraries(qbsolv libqbsolv)
-    target_link_libraries(qbsolv pigpio)
+    target_link_libraries(cobisolv libcobisolv)
+    target_link_libraries(cobisolv pigpio)
 endif()
 
-if(QBSOLV_BUILD_TESTS)
+if(COBISOLV_BUILD_TESTS)
     # Download and unpack googletest at configure time
     configure_file(CMakeLists.txt.in googletest-download/CMakeLists.txt)
     execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .

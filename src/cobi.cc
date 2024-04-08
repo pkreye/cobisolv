@@ -1,12 +1,10 @@
-#include "ising.h"
+#include "cobi.h"
 
 #include "extern.h"  // qubo header file: global variable declarations
 #include "macros.h"
 
-// #include "ising_graph_helper.h"
 // #include "extern.h"  // qubo header file: global variable declarations
 // #include "macros.h"
-// #include "ising_graph_helper.h"
 
 #include <pigpio.h>
 
@@ -142,140 +140,6 @@ const int BLANK_GRAPH[64][64] = {
     {0,0,4,4,4,2,4,7,4,7,7,6,3,7,7,4,4,7,4,4,1,7,7,7,7,4,2,7,3,5,4,3,1,1,2,4,7,7,7,3,7,5,4,5,3,7,7,2,5,5,1,3,3,3,3,4,7,5,3,4,3,4,7,0},
     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 };
-// {
-//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,},
-//     {0,0,4,4,4,2,4,7,4,7,7,6,3,7,7,4,4,7,4,4,1,7,7,7,7,4,2,7,3,5,4,3,1,1,2,4,7,7,7,3,7,5,4,5,3,7,7,2,5,5,1,3,3,3,3,4,7,5,3,4,3,4,7,0,},
-//     {0,4,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
-//     {0,2,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
-//     {0,4,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
-//     {0,1,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,},
-//     {0,2,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
-//     {0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,},
-//     {0,2,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
-//     {0,7,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
-//     {0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
-//     {0,1,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
-//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
-//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
-//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
-//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
-//     {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,},
-//     {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
-//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
-//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,},
-//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,},
-//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,},
-//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,5,},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,3,},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,2,},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,3,},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,3,},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,4,},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,4,},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,7,},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,5,},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,3,},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,4,},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,3,},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,3,},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,},
-//     {0,0,4,3,3,3,3,0,5,7,5,0,4,7,7,3,3,7,2,5,2,7,2,3,7,3,0,7,3,4,5,3,0,0,3,3,3,7,7,3,7,5,5,5,3,2,1,2,4,5,2,4,2,2,4,5,7,3,3,0,3,1,7,0,}
-// };
-
-//const int BLANK_GRAPH[64][64] = {
-//     {0,0,4,3,3,3,3,0,5,7,5,0,4,7,7,3,3,7,2,5,2,7,2,3,7,3,0,7,3,4,5,3,0,0,3,3,3,7,7,3,7,5,5,5,3,2,1,2,4,5,2,4,2,2,4,5,7,3,3,0,3,1,7,0},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2},
-//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
-//     {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6},
-//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-//     {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6},
-//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-//     {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-//     {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-//     {0,0,4,4,4,2,4,7,4,7,7,6,3,7,7,4,4,7,4,4,1,7,7,7,7,4,2,7,3,5,4,3,1,1,2,4,7,7,7,3,7,5,4,5,3,7,7,2,5,5,1,3,3,3,3,4,7,5,3,4,3,4,7,0},
-//     {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-// }
-
 
 // Misc utility functions
 
@@ -446,9 +310,9 @@ void binary_splice_rev(int num, int *bin_list)
 
 // ising subproblem solver
 
-IsingData *ising_data_mk(size_t size, int chip_delay, bool descend)
+CobiData *cobi_data_mk(size_t size, int chip_delay, bool descend)
 {
-    IsingData *d = (IsingData*)malloc(sizeof(IsingData));
+    CobiData *d = (CobiData*)malloc(sizeof(CobiData));
     d->probSize = size;
     d->w = 64;
     d->h = 64;
@@ -465,7 +329,7 @@ IsingData *ising_data_mk(size_t size, int chip_delay, bool descend)
     return d;
 }
 
-void free_ising_data(IsingData *d)
+void free_cobi_data(CobiData *d)
 {
     _free_array2d((void**)d->programming_bits, d->w);
     free(d->chip2_test);
@@ -473,7 +337,7 @@ void free_ising_data(IsingData *d)
     free(d);
 }
 
-int ising_gpio_setup()
+int cobi_gpio_setup()
 {
         gpioSetMode(WEIGHT_2,    PI_OUTPUT);
         gpioSetMode(WEIGHT_3,    PI_OUTPUT);
@@ -508,7 +372,7 @@ int ising_gpio_setup()
         return 0;
 }
 
-void ising_weight_pins_low()
+void cobi_weight_pins_low()
 {
         GPIO_WRITE(WEIGHT_0, PI_LOW);
         GPIO_WRITE(WEIGHT_1, PI_LOW);
@@ -518,7 +382,7 @@ void ising_weight_pins_low()
         GPIO_WRITE(WEIGHT_5, PI_LOW);
 }
 
-void ising_set_addr(const int *addrs, int *bin_num_list)
+void cobi_set_addr(const int *addrs, int *bin_num_list)
 {
     int addr_name;
     int i;
@@ -532,7 +396,7 @@ void ising_set_addr(const int *addrs, int *bin_num_list)
     }
 }
 
-void ising_program_weights(int **programming_bits)
+void cobi_program_weights(int **programming_bits)
 {
     if (Verbose_ > 0) {
         printf("Programming chip\n");
@@ -546,7 +410,7 @@ void ising_program_weights(int **programming_bits)
     int bin_weight_list[6];
 
     // reset pins for programming
-    ising_weight_pins_low();
+    cobi_weight_pins_low();
     GPIO_WRITE(ALL_ROW_HI, PI_LOW);
 
     // # run through each row of 64x64 cells in COBI/COBIFREEZE
@@ -558,16 +422,16 @@ void ising_program_weights(int **programming_bits)
             binary_splice_rev(y, bin_col_list);
             binary_splice_rev(programming_bits[x][y], bin_weight_list);
 
-            ising_set_addr(ROW_ADDRS, bin_row_list); // #assign the row number
-            ising_set_addr(COL_ADDRS, bin_col_list); // #assign the column number
+            cobi_set_addr(ROW_ADDRS, bin_row_list); // #assign the row number
+            cobi_set_addr(COL_ADDRS, bin_col_list); // #assign the column number
 
             GPIO_WRITE(enable_pin_name, PI_HIGH);
 
             // #set weight of 1 cell
-            ising_set_addr(WEIGHTS, bin_weight_list); // #assign the weight corresponding to current cell
+            cobi_set_addr(WEIGHTS, bin_weight_list); // #assign the weight corresponding to current cell
             // # time.sleep(.001) # Delay removed since COBIFIXED65 board does not have any level shifters which causes additional signal delay
             GPIO_WRITE(enable_pin_name, PI_LOW);
-            ising_weight_pins_low(); // #reset for next address
+            cobi_weight_pins_low(); // #reset for next address
         }
     }
 
@@ -577,7 +441,7 @@ void ising_program_weights(int **programming_bits)
 }
 
 
-/* int ising_cal_energy_ham() //# cal_energy_ham(self, size, graph_input_file) *\/ */
+/* int cobi_cal_energy_ham() //# cal_energy_ham(self, size, graph_input_file) *\/ */
 /* { */
 /*     // TODO finish */
 /*     // directly implement functionality of graph_helper.qubo_solve_file here */
@@ -610,11 +474,11 @@ void ising_program_weights(int **programming_bits)
 /* } */
 
 /*
- * ising_gh_read_spins
+ * cobi_gh_read_spins
  *
- * returns spins via `ising_data->spins`
+ * returns spins via `cobi_data->spins`
  */
-void ising_gh_read_spins(IsingData *ising_data)
+void cobi_gh_read_spins(CobiData *cobi_data)
 {
     // chip_data_len must equal 63*7 == 441
     // int const chip_data_len = 441;
@@ -630,7 +494,7 @@ void ising_gh_read_spins(IsingData *ising_data)
         node_index = (62 - i) * 7;
 
         for (int bit_index = 0; bit_index < 7; bit_index++) {
-            cur_val = ising_data->chip2_test[node_index+bit_index];
+            cur_val = cobi_data->chip2_test[node_index+bit_index];
 
             if (cur_val == 0) {
                 excess_0s[i]++;
@@ -643,9 +507,9 @@ void ising_gh_read_spins(IsingData *ising_data)
     for (int g = 0; g < NUM_GROUPS; g++) {
         node_index = COBIFIXED65_BASEGROUPS[g];
         if (excess_0s[node_index] <= 0) {
-            ising_data->spins[g] = -1;
+            cobi_data->spins[g] = -1;
         } else {
-            ising_data->spins[g] = 1;
+            cobi_data->spins[g] = 1;
         }
     }
 }
@@ -737,7 +601,7 @@ int **_array2d_element_mult(int **a, int **b, int w, int h)
     return result;
 }
 
-void ising_simple_descent(int *spins, int **weights)
+void cobi_simple_descent(int *spins, int **weights)
 {
     // Assumption: NUM_GROUPS == len(weights) == len(weights[i]) == len(spins)
     int size = NUM_GROUPS;
@@ -778,20 +642,20 @@ void ising_simple_descent(int *spins, int **weights)
         if (diffs[i] < 0) {
             spins[i] *= -1;
 
-            return ising_simple_descent(spins, weights);
+            return cobi_simple_descent(spins, weights);
         }
     }
     // return ham;
 }
 
 
-void ising_gh_cal_energy_direct(int *spins, int **weights, int *hamiltonian, bool descend)
+void cobi_gh_cal_energy_direct(int *spins, int **weights, int *hamiltonian, bool descend)
 {
     int size = NUM_GROUPS;
 
     // implementing only the `descend == True` path in original code
     if (descend){
-        ising_simple_descent(spins, weights);
+        cobi_simple_descent(spins, weights);
     }
 
     int ham = 0;
@@ -806,9 +670,9 @@ void ising_gh_cal_energy_direct(int *spins, int **weights, int *hamiltonian, boo
     }
 }
 
-void ising_gh_cal_energy(IsingData *ising_data, int *hamiltonian)
+void cobi_gh_cal_energy(CobiData *cobi_data, int *hamiltonian)
 {
-    ising_gh_read_spins(ising_data);
+    cobi_gh_read_spins(cobi_data);
 
     /* weights = np.zeros((num_groups,num_groups),dtype=np.int8) */
     int **weights = _malloc_array2d(NUM_GROUPS, NUM_GROUPS);
@@ -825,26 +689,26 @@ void ising_gh_cal_energy(IsingData *ising_data, int *hamiltonian)
             i = COBIFIXED65_BASEGROUPS[x];
             j = COBIFIXED65_BASEGROUPS[y];
 
-            weights[x][y] -= (ising_data->programming_bits[62-i][j+1] +
-                              ising_data->programming_bits[62-j][i+1]);
+            weights[x][y] -= (cobi_data->programming_bits[62-i][j+1] +
+                              cobi_data->programming_bits[62-j][i+1]);
         }
     }
 
     if (Verbose_ > 1) {
         printf("Spins before: ");
         for (i = 0; i < NUM_GROUPS; i++) {
-            printf(" %d", ising_data->spins[i]);
+            printf(" %d", cobi_data->spins[i]);
         }
         printf("\n");
     }
 
     /* return cal_energy_direct(spins,weights,descend,return_spins) */
-    ising_gh_cal_energy_direct(ising_data->spins, weights, hamiltonian, ising_data->descend);
+    cobi_gh_cal_energy_direct(cobi_data->spins, weights, hamiltonian, cobi_data->descend);
 
     if (Verbose_ > 1) {
         printf("Spins after: ");
         for (i = 0; i < NUM_GROUPS; i++) {
-            printf(" %d", ising_data->spins[i]);
+            printf(" %d", cobi_data->spins[i]);
         }
         printf("\n");
     }
@@ -852,29 +716,29 @@ void ising_gh_cal_energy(IsingData *ising_data, int *hamiltonian)
     _free_array2d((void**)weights, NUM_GROUPS);
 }
 
-// ising_data_array is not used
-int ising_cal_energy(IsingData *ising_data)
+// cobi_data_array is not used
+int cobi_cal_energy(CobiData *cobi_data)
 {
     /* #if sample_index%3==0: */
     GPIO_WRITE(ROSC_EN, PI_LOW);
-    GPIO_WRITE_DELAY(ROSC_EN, PI_HIGH, ising_data->chip_delay);
+    GPIO_WRITE_DELAY(ROSC_EN, PI_HIGH, cobi_data->chip_delay);
 
-    // usleep(ising_data->chip_delay);
+    // usleep(cobi_data->chip_delay);
 
-    GPIO_WRITE_DELAY(SAMPLE_CLK, PI_HIGH, ising_data->chip_delay);
+    GPIO_WRITE_DELAY(SAMPLE_CLK, PI_HIGH, cobi_data->chip_delay);
         /* #time.sleep(0.0001) */
-    // usleep(ising_data->chip_delay);
-    GPIO_WRITE_DELAY(SAMPLE_CLK, PI_LOW, ising_data->chip_delay);
+    // usleep(cobi_data->chip_delay);
+    GPIO_WRITE_DELAY(SAMPLE_CLK, PI_LOW, cobi_data->chip_delay);
 
     int bit = 0;
     for (bit = 0; bit < 441; bit++) {
         /*     # if (sample == 1) and (bit < 64): */
         /*     #     print(GPIO.input(scanout_dout64_chip1)) */
         if (gpioRead(SCANOUT_DOUT64_CHIP2) == 1) {
-            ising_data->chip2_test[bit] = 1;
+            cobi_data->chip2_test[bit] = 1;
 
         } else {
-            ising_data->chip2_test[bit] = 0;
+            cobi_data->chip2_test[bit] = 0;
         }
 
         if (bit == 440) {
@@ -887,13 +751,13 @@ int ising_cal_energy(IsingData *ising_data)
 
     /* int *hamiltonians = malloc(sizeof(double) * num_samples); */
     int hamiltonian = 0;
-    ising_gh_cal_energy(ising_data, &hamiltonian);
+    cobi_gh_cal_energy(cobi_data, &hamiltonian);
 
     // TODO add majority voting thing..
     return hamiltonian;
 }
 
-void ising_modify_array_for_pins(int **initial_array, int  **final_pin_array, int problem_size)
+void cobi_modify_array_for_pins(int **initial_array, int  **final_pin_array, int problem_size)
 {
     int total_0_rows = 63 - problem_size;
 
@@ -977,38 +841,38 @@ void ising_modify_array_for_pins(int **initial_array, int  **final_pin_array, in
 }
 
 // py: cobifixed65_rpi::test_multi_times
-int *ising_test_multi_times(
-    IsingData *ising_data, int sample_times, int sample_bits, int size, int8_t *solution
+int *cobi_test_multi_times(
+    CobiData *cobi_data, int sample_times, int sample_bits, int size, int8_t *solution
 ) {
-    ising_program_weights(ising_data->programming_bits);
+    cobi_program_weights(cobi_data->programming_bits);
 
     int times = 0;
     int *all_results = _malloc_array1d(sample_times);
     int cur_best = 0;
     int res;
 
-    /* int energy_ham = ising_cal_energy_ham(...); //# calculate Qbsolv energy once */
+    /* int energy_ham = cobi_cal_energy_ham(...); //# calculate Qbsolv energy once */
     // int energy_ham = 0;
-    /* int **ising_data_array = _malloc_array2d(400,sample_times); */
+    /* int **cobi_data_array = _malloc_array2d(400,sample_times); */
 
     GPIO_WRITE(ALL_ROW_HI, PI_HIGH);
     GPIO_WRITE(SCANOUT_CLK, PI_LOW);
     GPIO_WRITE(WEIGHT_EN, PI_HIGH);
-    GPIO_WRITE_DELAY(WEIGHT_EN, PI_LOW, ising_data->chip_delay);
+    GPIO_WRITE_DELAY(WEIGHT_EN, PI_LOW, cobi_data->chip_delay);
 
 
     while (times < sample_times) {
         if (Verbose_ > 2) {
             printf("\nSample number %d\n", times);
         }
-        res = ising_cal_energy(ising_data);  //# calculate H energy from chip data
+        res = cobi_cal_energy(cobi_data);  //# calculate H energy from chip data
 
         all_results[times] = res;
 
         if (res > cur_best) {
             cur_best = res;
             for (int i = 0; i < NUM_GROUPS; i++ ) {
-                solution[i] = ising_data->spins[i];
+                solution[i] = cobi_data->spins[i];
             }
         }
 
@@ -1028,7 +892,7 @@ int *ising_test_multi_times(
     return all_results;
 }
 
-int **ising_init_problem_matrix(int **problem_data, int problem_size)
+int **cobi_init_problem_matrix(int **problem_data, int problem_size)
 {
     if (problem_size > NUM_GROUPS) {
         // TODO? handle problem sizes between 0 and 59?
@@ -1063,7 +927,7 @@ int **ising_init_problem_matrix(int **problem_data, int problem_size)
     return m;
 }
 
-void ising_norm_val(int **norm, double **ising, size_t size)
+void cobi_norm_val(int **norm, double **ising, size_t size)
 {
     // TODO consider alternate mapping/normalization schemes
     double min = 0;
@@ -1148,34 +1012,21 @@ void ising_from_qubo(double **ising, double **qubo, int size)
     }
 }
 
-// void ising_bit_stream_generate_adj(IsingData *ising_data, int **val, int prob_size)
-// {
-
-//         // input_graph = graph_helper.realize_weights(graph_helper.cobifixed65_basegroups,adj)
-//         // input_graph = graph_helper.add_shil(input_graph,4)
-//         // input_graph = graph_helper.add_calibration(input_graph,"./calibration/cals.txt")
-//         // create_graph.write_prog_from_matrix(input_graph,i)
-//         // self.selected_file = "run_files/all_to_all_graph_write_%i.txt" %i
-//         // self.programming_bits = self.modify_array_for_pins(input_graph,np.zeros((64,64),dtype=np.int8),63
-//     // TODO? determine how to generalize the problem_size assumption
-//     ising_modify_array_for_pins(val, ising_data->programming_bits, 63);
-// }
-
-int ising_init()
+int cobi_init()
 {
     if (gpioInitialise() < 0) return 1;
 
     // setup GPIO pins
-    ising_gpio_setup();
+    cobi_gpio_setup();
 
     if(Verbose_ > 0) printf("GPIO initialized successfully\n");
 
     return 0;
 }
 
-bool ising_established()
+bool cobi_established()
 {
-    // TODO How to verify existence of ising chip?
+    // TODO How to verify existence of cobi chip?
     // connection = getenv("DW_INTERNAL__CONNECTION");
     // if (connection == NULL) {
     return true;
@@ -1183,60 +1034,47 @@ bool ising_established()
     // return true;
 }
 
-void ising_solver(
+void cobi_solver(
     double **qubo, int maxNodes, int8_t *qubo_solution, int num_samples, int chip_delay, bool descend
 ) {
     if (maxNodes > 59) {
-        printf("Quitting.. ising_solver called with size %d. Cannot be greater than 59.\n", maxNodes);
+        printf("Quitting.. cobi_solver called with size %d. Cannot be greater than 59.\n", maxNodes);
         exit(2);
     }
 
     int sample_bits = 8;   //# use 8 bits sampling
 
-    IsingData *ising_data = ising_data_mk(maxNodes, chip_delay, descend);
+    CobiData *cobi_data = cobi_data_mk(maxNodes, chip_delay, descend);
     int8_t *ising_solution = (int8_t*)malloc(sizeof(int8_t) * maxNodes);
     double **ising = _malloc_double_array2d(maxNodes, maxNodes);
     int **norm_val = _malloc_array2d(maxNodes, maxNodes);
 
     ising_from_qubo(ising, qubo, maxNodes);
-    ising_norm_val(norm_val, ising, maxNodes);
+    cobi_norm_val(norm_val, ising, maxNodes);
 
-    int **mtx = ising_init_problem_matrix(norm_val, maxNodes);
-    ising_modify_array_for_pins(mtx, ising_data->programming_bits, 63);
+    int **mtx = cobi_init_problem_matrix(norm_val, maxNodes);
+    cobi_modify_array_for_pins(mtx, cobi_data->programming_bits, 63);
 
     // Convert solution from QUBO to ising
     ising_solution_from_qubo_solution(ising_solution, qubo_solution, maxNodes);
 
     //
-    int *results = ising_test_multi_times(
-        ising_data, num_samples, sample_bits, maxNodes, ising_solution
+    int *results = cobi_test_multi_times(
+        cobi_data, num_samples, sample_bits, maxNodes, ising_solution
     );
 
     // Convert ising solution back to QUBO form
     qubo_solution_from_ising_solution(qubo_solution, ising_solution, maxNodes);
 
     free(results);
-    free_ising_data(ising_data);
+    free_cobi_data(cobi_data);
     free(ising_solution);
     _free_array2d((void**)ising, maxNodes);
     _free_array2d((void**)norm_val, maxNodes);
     _free_array2d((void**)mtx, 64);
-
-    // printf("Results:\n--\n");
-    // int i;
-    // for(i = 0; i < sample_times; i++) {
-    //     printf("%d\n", results[i]);
-    // }
-    // printf("\n--");
-
-    /* int i; */
-    /* for (i = 0; i < 504; i++) { */
-    /*     printf("%d", ising_data->chip2_test[i]); */
-    /* } */
-    // printf("\n");
 }
 
-void ising_close()
+void cobi_close()
 {
     if (Verbose_ > 0) {
         printf("pigpio clean up\n");

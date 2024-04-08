@@ -14,7 +14,7 @@
 
 #include "dwsolv.h"
 #include "extern.h"
-#include "ising.h"
+#include "cobi.h"
 #include "macros.h"
 #include "qbsolv.h"
 #include "util.h"
@@ -612,11 +612,11 @@ void tabu_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, voi
     free(TabuK);
 }
 
-void ising_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *sub_sampler_data)
+void cobi_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *sub_sampler_data)
 {
     parameters_t *params = (parameters_t*) sub_sampler_data;
 
-    ising_solver(sub_qubo, subMatrix, sub_solution, params->ising_num_samples, params->ising_delay, params->ising_descend);
+    cobi_solver(sub_qubo, subMatrix, sub_solution, params->cobi_num_samples, params->cobi_delay, params->cobi_descend);
 
     int64_t sub_bit_flips = 0;
     double *flip_cost = (double *)malloc(sizeof(double) * subMatrix);
@@ -647,9 +647,9 @@ parameters_t default_parameters() {
     param.preSearchPassFactor = 0;
     param.globalSearchPassFactor = 0;
     param.seed = 17932241798878;
-    param.ising_delay = 100;
-    param.ising_num_samples = 10;
-    param.ising_descend = false;
+    param.cobi_delay = 100;
+    param.cobi_num_samples = 10;
+    param.cobi_descend = false;
     return param;
 }
 
