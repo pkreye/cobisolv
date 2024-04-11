@@ -236,7 +236,7 @@ int main(int argc, char *argv[]) {
                 // Get delay to use when waiting for cobi chip, in microsecond
                 param.cobi_delay = strtol(optarg, &chx, 10);
                 break;
-            case 'I':
+            case 'C':
                 use_cobi = true;
                 break;
             case 'd':

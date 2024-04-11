@@ -1,22 +1,14 @@
-======
+========
 Cobisolv
-======
+========
 
-This repository is extends `qbsolv <https://github.com/dwavesystems/qbsolv>`_ to support COBI
-
-deprecated as of the end of 2021. Support will be
-discontinued after March 2022. Please update your code to use Ocean's
-`dwave-hybrid <https://docs.ocean.dwavesys.com/en/stable/docs_hybrid/sdk_index.html>`_
-or Leap's quantum-classical
-`hybrid solvers <https://docs.dwavesys.com/docs/latest/doc_leap_hybrid.html>`_
-instead.
+This repository is extends `qbsolv <https://github.com/dwavesystems/qbsolv>`_ to support the COBI chip.
 
  .. index-start-marker
 
 A decomposing solver that finds a minimum value of a large quadratic unconstrained binary
-optimization (QUBO) problem by splitting it into pieces. The pieces are solved using a
-classical solver running the tabu algorithm. qbsolv also enables configuring a D-Wave
-system as the solver.
+optimization (QUBO) problem by splitting it into pieces. The pieces are solved using a classical
+solver running the tabu algorithm. cobisolv also enables configuring a COBI chip as the solver.
 
 .. index-end-marker
 
@@ -27,8 +19,9 @@ Installation or Building
 
 C
 -
-To build the C library install `pigpio <https://github.com/joan2937/pigpio>`_, then use cmake to
-generate a build command for your system. On Linux the commands would be something like this:
+To build the C library first install `pigpio <https://github.com/joan2937/pigpio>`_ library. Then
+use cmake to generate a build command for your system. On Linux the commands would be something like
+this:
 
 .. code-block:: bash
 
@@ -36,11 +29,12 @@ generate a build command for your system. On Linux the commands would be somethi
     cmake ..
     make
 
-To build the command line interface turn the cmake option `QBSOLV_BUILD_CMD` on. The command line option for cmake to do
-this would be `-DQBSOLV_BUILD_CMD=ON`. To build the tests turn the cmake option `QBSOLV_BUILD_TESTS` on. The command
-line option for cmake to do this would be `-DQBSOLV_BUILD_TESTS=ON`.
+To build the command line interface turn the cmake option `COBISOLV_BUILD_CMD` on. The command line option for cmake to do
+this would be `-DCOBISOLV_BUILD_CMD=ON`. To build the tests turn the cmake option `COBISOLV_BUILD_TESTS` on. The command
+line option for cmake to do this would be `-DCOBISOLV_BUILD_TESTS=ON`.
 
-For cross compiling to Raspberry Pi
+For cross compiling to Raspberry Pi add the cmake option `-DCOBISOLV_CROSS_COMPILE=ON`. This will
+require that you cross compile pigpio as well.
 
 .. installation-end-marker
 
@@ -51,13 +45,13 @@ Command Line Usage
 
 .. code::
 
-    qbsolv -i infile [-o outfile] [-m] [-T] [-n] [-S SubMatrix] [-w]
+    cobisolv -i infile [-C] [-o outfile] [-m] [-T] [-n] [-S SubMatrix] [-w]
         [-h] [-a algorithm] [-v verbosityLevel] [-V] [-q] [-t seconds]
 
 Description
 -----------
 
-qbsolv executes a quadratic unconstrained binary optimization
+cobisolv executes a quadratic unconstrained binary optimization
 (QUBO) problem represented in a file. It returns bit-vector
 results that minimizes---or optionally, maximizes---the value of
 the objective function represented by the QUBO.  The problem is
@@ -70,25 +64,19 @@ Options are as follows:
 
 .. code::
 
-   -I
-   If present, use cobi chip to solve sub-problems.
-
-   -z numSamples
-   Number of solutions to sample from cobi chip. Defaults to 10.
-
-   -p preSearchPassFactor
-   Scale the amount of classical tabu search to be performed before decomposing problem to
-   sub-problems. Defaults to 0. Standard qbsolv uses 6500.
-
-   -g globalSearchPassFactor
-   Scale the amount of classical tabu search to be performed between each round of sub-problem
-   solutions. Defaults to 0. Standard qbsolv uses 1700.
-
-   -d
-   Final output will be printed as comma delimited data, allowing for aggregation of multiple runs in a
-   single data file.
-
-
+    -C
+        If present, use cobi chip to solve sub-problems.
+    -z numSamples
+        Number of solutions to sample from cobi chip. Defaults to 10.
+    -p preSearchPassFactor
+        Scale the amount of classical tabu search to be performed before decomposing problem to
+        sub-problems. Defaults to 0. Standard qbsolv uses 6500.
+    -g globalSearchPassFactor
+        Scale the amount of classical tabu search to be performed between each round of sub-problem
+        solutions. Defaults to 0. Standard qbsolv uses 1700.
+    -d
+        Final output will be printed as comma delimited data, allowing for aggregation of multiple
+        runs in a single data file.
     -i infile
         Name of the file for the input QUBO. This option is mandatory.
     -o outfile
@@ -117,7 +105,7 @@ Options are as follows:
     -w
         If present, the QUBO matrix and result are printed in .csv format.
     -h
-        If present, prints the help or usage message for qbsolv and exits without execution.
+        If present, prints the help or usage message for cobisolv and exits without execution.
     -v verbosityLevel
         Optional setting of the verbosity of output. The default verbosityLevel of
         0 outputs the number of bits in the solution, the solution,
@@ -126,7 +114,7 @@ Options are as follows:
         also outputs more detailed information at each step of the algorithm. The
         information increases for verbosity levels of up to 4.
     -V
-        If present, prints the version number of the qbsolv program and exits without execution.
+        If present, prints the version number of the cobisolv program and exits without execution.
     -q
         If present, prints the format of the QUBO file.
     -r seed
@@ -135,7 +123,7 @@ Options are as follows:
 .. usage-end-marker
 
 QUBO Input File Format
-=============================
+======================
 
 .. format-start-marker
 

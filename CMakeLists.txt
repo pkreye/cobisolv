@@ -1,12 +1,11 @@
 cmake_minimum_required(VERSION 3.0)
 
-option(COBISOLV_CROSS_COMPILE_RPI "Cross compile for Raspberry Pi." OFF)
+option(COBISOLV_CROSS_COMPILE "Cross compile for Raspberry Pi." OFF)
 option(COBISOLV_BUILD_STATIC "Build static executable." ON)
 option(COBISOLV_BUILD_CMD "Build compiled command line interface." ON)
 option(COBISOLV_BUILD_TESTS "Build c library unit tests." OFF)
 
-
-if(COBISOLV_CROSS_COMPILE_RPI)
+if(COBISOLV_CROSS_COMPILE)
   set(CMAKE_TOOLCHAIN_FILE ./Toolchain-RasberryPi.cmake)
 endif()
 
