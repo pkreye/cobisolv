@@ -17,9 +17,7 @@ Installation or Building
 
 .. installation-start-marker
 
-C
--
-To build the C library you will need to first install `pigpio <https://github.com/joan2937/pigpio>`_
+To build cobisolv you will need to first install the `pigpio <https://github.com/joan2937/pigpio>`_
 library. Then use cmake to generate a build command for your system. On Linux the commands would be
 something like this:
 
@@ -65,14 +63,14 @@ Options are as follows:
 .. code::
 
     -C
-        If present, use cobi chip to solve sub-problems.
+        If present, use cobi chip to solve subproblems.
     -z numSamples
         Number of solutions to sample from cobi chip. Defaults to 10.
     -p preSearchPassFactor
         Scale the amount of classical tabu search to be performed before decomposing problem to
-        sub-problems. Defaults to 0. Standard qbsolv uses 6500.
+        subproblems. Defaults to 0. Standard qbsolv uses 6500.
     -g globalSearchPassFactor
-        Scale the amount of classical tabu search to be performed between each round of sub-problem
+        Scale the amount of classical tabu search to be performed between each round of subproblem
         solutions. Defaults to 0. Standard qbsolv uses 1700.
     -d
         Final output will be printed as comma delimited data, allowing for aggregation of multiple
@@ -97,7 +95,7 @@ Options are as follows:
         no change in optimal value found before stopping.
         Default value is 50.
     -S subproblemSize
-        Optional size of the sub-problems into which the QUBO is decomposed.
+        Optional size of the subproblems into which the QUBO is decomposed.
         If no "-S 0" or "-S" argument is present, uses the size specified in the
         embedding file found in the workspace set up by DW. If no DW environment is
         established, value defaults to 47 and uses the tabu solver on subproblems.
