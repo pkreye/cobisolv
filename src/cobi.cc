@@ -165,28 +165,6 @@ int usleep(long usecs)
    return nanosleep(&req , &rem);
 }
 
-int _rand_int_normalized()
-{
-// generate random int normalized to -7 to 7
-//
-    if (rand() % 2 == 1) {
-        return rand() % 8;
-    } else {
-        return -1 * (rand() % 8);
-    }
-}
-
-int *_intdup(int *a, size_t len)
-{
-    int *new_array = (int*)malloc(sizeof(int) *  len);
-    if (new_array == NULL) {
-        fprintf(stderr, "Bad malloc: %s %s:%d", __FUNCTION__, __FILE__, __LINE__);
-    }
-
-    memcpy(new_array, a, sizeof(int) * len);
-    return new_array;
-}
-
 int *_malloc_array1d(int len)
 {
     int* a = (int*)malloc(sizeof(int *) * len);
@@ -241,20 +219,6 @@ int **_malloc_array2d(int w, int h)
     return a;
 }
 
-int **_gen_rand_array2d(int w, int h)
-{
-    int** a = _malloc_array2d(w, h);
-
-    int i, j;
-    for (i = 0; i < w; i++) {
-        for (j = 0; j < h; j++) {
-            a[i][j] = _rand_int_normalized();
-        }
-    }
-
-    return a;
-}
-
 void _free_array2d(void **a, int w) {
     int i;
     for (i = 0; i < w; i++) {
@@ -272,6 +236,140 @@ void binary_splice_rev(int num, int *bin_list)
         bin_list[i] = (num >> shift) & 1;
         shift++;
     }
+}
+
+/* _outer_prod
+
+   Assumes `result` has dimensions (`len_a`, `len_b`).
+ */
+void _outer_prod(int *a, size_t len_a, int *b, size_t len_b, int **result)
+{
+    size_t i, j;
+
+    for (i = 0; i < len_a; i++) {
+        for (j = 0; j < len_b; j++) {
+            result[i][j] = a[i] * b[j];
+        }
+    }
+}
+
+void _scalar_mult(int *a, size_t len, int scalar)
+{
+    size_t i;
+    for (i = 0; i < len; i++) {
+        a[i] = a[i] * scalar;
+    }
+}
+
+/* _transpose
+
+   Returns newly allocated 2d array containing the result.
+ */
+int **_transpose(int **a, int w, int h)
+{
+    int **result = _malloc_array2d(h, w);
+
+    int i, j;
+    for (i = 0; i < w; i++) {
+        for (j = 0; j < h; j++) {
+            result[j][i] = a[i][j];
+        }
+    }
+
+    return result;
+}
+
+/* Element-wise addition of 2 2D arrays. Result stored in first array. */
+void _add_array2d(int **a, int **b, int w, int h)
+{
+    int i, j;
+    for (i = 0; i < w; i++) {
+        for (j = 0; j < h; j++) {
+            a[i][j] += b[i][j];
+        }
+    }
+}
+
+int **_matrix_mult(int **a, int a_w, int a_h, int **b, int b_h)
+{
+    // b is assumed to have dimensions (a_h, b_h)
+    // int b_w = a_h;
+
+    int **result = _malloc_array2d(a_w, b_h);
+
+    int i, j, k;
+    for(i = 0; i < a_w; i++) { // each row of a
+        for(j = 0; j < b_h; j++) { // each col in b
+            result[i][j] = 0;
+            for(k = 0; k < a_h; k++) { // each col a
+                result[i][j] += a[i][k] * b[k][j];
+            }
+        }
+    }
+
+    return result;
+}
+
+// Elementwise multiplication of 2D arrays
+int **_array2d_element_mult(int **a, int **b, int w, int h)
+{
+    int **result = _malloc_array2d(w, h);
+
+    int i, j;
+    for (i = 0; i < w; i++) {
+        for (j = 0; j < h; j++) {
+            result[i][j] = a[i][j] * b[i][j];
+        }
+    }
+
+    return result;
+}
+
+void cobi_simple_descent(int *spins, int **weights)
+{
+    // Assumption: NUM_GROUPS == len(weights) == len(weights[i]) == len(spins)
+    int size = NUM_GROUPS;
+
+    int neg_spins[NUM_GROUPS];
+    for (int i = 0; i < size; i++) {
+        // _scalar_mult(neg_spins, size, -1);
+        neg_spins[i] = spins[i] * -1;
+    }
+
+    int **cross = _malloc_array2d(size, size);
+    // int cross[NUM_GROUPS][NUM_GROUPS]
+    _outer_prod(spins, size, neg_spins, size, cross);
+
+    // # prod = cross * (weights+weights.transpose())
+    int **wt_transpose = _transpose(weights, size, size);
+    // add weights to wt_transpose, storing result in wt_transpose
+    _add_array2d(wt_transpose, weights, size, size);
+    int **prod = _array2d_element_mult(cross, wt_transpose, size, size);
+
+    // # diffs = np.sum(prod,0)
+    int diffs[NUM_GROUPS];
+    // Column-wise sum
+    for (int i = 0; i < size; i++) {
+        diffs[i] = 0;
+        for (int j = 0; j < size; j++) {
+            diffs[i] += prod[j][i];
+        }
+    }
+
+
+    // TODO fix recursive structure...
+    _free_array2d((void**)cross, size);
+    _free_array2d((void**)wt_transpose, size);
+    _free_array2d((void**)prod, size);
+
+    for (int i = 0; i < size; i++) {
+        if (diffs[i] < 0) {
+            spins[i] *= -1;
+
+            return cobi_simple_descent(spins, weights);
+        }
+    }
+    // return ham;
 }
 
 // ising subproblem solver
@@ -446,141 +544,6 @@ void cobi_read_spins(CobiData *cobi_data)
         }
     }
 }
-
-/* _outer_prod
-
-   Assumes `result` has dimensions (`len_a`, `len_b`).
- */
-void _outer_prod(int *a, size_t len_a, int *b, size_t len_b, int **result)
-{
-    size_t i, j;
-
-    for (i = 0; i < len_a; i++) {
-        for (j = 0; j < len_b; j++) {
-            result[i][j] = a[i] * b[j];
-        }
-    }
-}
-
-void _scalar_mult(int *a, size_t len, int scalar)
-{
-    size_t i;
-    for (i = 0; i < len; i++) {
-        a[i] = a[i] * scalar;
-    }
-}
-
-/* _transpose
-
-   Returns newly allocated 2d array containing the result.
- */
-int **_transpose(int **a, int w, int h)
-{
-    int **result = _malloc_array2d(h, w);
-
-    int i, j;
-    for (i = 0; i < w; i++) {
-        for (j = 0; j < h; j++) {
-            result[j][i] = a[i][j];
-        }
-    }
-
-    return result;
-}
-
-/* Element-wise addition of 2 2D arrays. Result stored in first array. */
-void _add_array2d(int **a, int **b, int w, int h)
-{
-    int i, j;
-    for (i = 0; i < w; i++) {
-        for (j = 0; j < h; j++) {
-            a[i][j] += b[i][j];
-        }
-    }
-}
-
-int **_matrix_mult(int **a, int a_w, int a_h, int **b, int b_h)
-{
-    // b is assumed to have dimensions (a_h, b_h)
-    // int b_w = a_h;
-
-    int **result = _malloc_array2d(a_w, b_h);
-
-    int i, j, k;
-    for(i = 0; i < a_w; i++) { // each row of a
-        for(j = 0; j < b_h; j++) { // each col in b
-            result[i][j] = 0;
-            for(k = 0; k < a_h; k++) { // each col a
-                result[i][j] += a[i][k] * b[k][j];
-            }
-        }
-    }
-
-    return result;
-}
-
-// Elementwise multiplication of 2D arrays
-int **_array2d_element_mult(int **a, int **b, int w, int h)
-{
-    int **result = _malloc_array2d(w, h);
-
-    int i, j;
-    for (i = 0; i < w; i++) {
-        for (j = 0; j < h; j++) {
-            result[i][j] = a[i][j] * b[i][j];
-        }
-    }
-
-    return result;
-}
-
-void cobi_simple_descent(int *spins, int **weights)
-{
-    // Assumption: NUM_GROUPS == len(weights) == len(weights[i]) == len(spins)
-    int size = NUM_GROUPS;
-
-    int neg_spins[NUM_GROUPS];
-    for (int i = 0; i < size; i++) {
-        // _scalar_mult(neg_spins, size, -1);
-        neg_spins[i] = spins[i] * -1;
-    }
-
-    int **cross = _malloc_array2d(size, size);
-    // int cross[NUM_GROUPS][NUM_GROUPS]
-    _outer_prod(spins, size, neg_spins, size, cross);
-
-    // # prod = cross * (weights+weights.transpose())
-    int **wt_transpose = _transpose(weights, size, size);
-    // add weights to wt_transpose, storing result in wt_transpose
-    _add_array2d(wt_transpose, weights, size, size);
-    int **prod = _array2d_element_mult(cross, wt_transpose, size, size);
-
-    // # diffs = np.sum(prod,0)
-    int diffs[NUM_GROUPS];
-    // Column-wise sum
-    for (int i = 0; i < size; i++) {
-        diffs[i] = 0;
-        for (int j = 0; j < size; j++) {
-            diffs[i] += prod[j][i];
-        }
-    }
-
-
-    // TODO fix recursive structure...
-    _free_array2d((void**)cross, size);
-    _free_array2d((void**)wt_transpose, size);
-    _free_array2d((void**)prod, size);
-
-    for (int i = 0; i < size; i++) {
-        if (diffs[i] < 0) {
-            spins[i] *= -1;
-
-            return cobi_simple_descent(spins, weights);
-        }
-    }
-    // return ham;
-}
-
 
 void cobi_gh_cal_energy_direct(int *spins, int **weights, int *hamiltonian, bool descend)
 {
@@ -775,7 +738,7 @@ void cobi_modify_array_for_pins(int **initial_array, int  **final_pin_array, int
 
 // py: cobifixed65_rpi::test_multi_times
 int *cobi_test_multi_times(
-    CobiData *cobi_data, int sample_times, int sample_bits, int size, int8_t *solution
+    CobiData *cobi_data, int sample_times, int size, int8_t *solution
 ) {
     cobi_program_weights(cobi_data->programming_bits);
 
@@ -842,8 +805,6 @@ int **cobi_init_problem_matrix(int **problem_data, int problem_size)
         }
     }
 
-
-    int fill = NUM_GROUPS - problem_size;
     for (int x = 0; x < NUM_GROUPS; x++) {
         i = COBIFIXED65_BASEGROUPS[x];
         for (int y = 0; y < NUM_GROUPS; y++) {
@@ -865,7 +826,6 @@ void cobi_norm_val(int **norm, double **ising, size_t size)
     double min = 0;
     double max = 0;
     double cur_v = 0;
-    double scale_factor = 0;
 
     size_t i,j;
     for (i = 0; i < size; i++) {
@@ -880,7 +840,6 @@ void cobi_norm_val(int **norm, double **ising, size_t size)
     // Linear scaling to range [-14, 14]
     // (y + 14) / (x - min) = 28 / (max - min)
     // y = (28 / (max - min)) * (x - min) - 14
-    scale_factor = 28 / (max - min);
 
     for (i = 0; i < size; i++) {
         for (j = i; j < size; j++) {
@@ -973,8 +932,6 @@ void cobi_solver(
         exit(2);
     }
 
-    int sample_bits = 8;   //# use 8 bits sampling
-
     CobiData *cobi_data = cobi_data_mk(numSpins, chip_delay, descend);
     int8_t *ising_solution = (int8_t*)malloc(sizeof(int8_t) * numSpins);
     double **ising = _malloc_double_array2d(numSpins, numSpins);
@@ -991,7 +948,7 @@ void cobi_solver(
 
     //
     int *results = cobi_test_multi_times(
-        cobi_data, num_samples, sample_bits, numSpins, ising_solution
+        cobi_data, num_samples, numSpins, ising_solution
     );
 
     // Convert ising solution back to QUBO form

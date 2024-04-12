@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
                                        {"Algo", required_argument, NULL, 'a'},
                                        {"preSearchPassFactor", required_argument, NULL, 'p'},
                                        {"globalSearchPassFactor", required_argument, NULL, 'g'},
-                                       {"useCobi", no_argument, NULL, 'I'},
+                                       {"useCobi", no_argument, NULL, 'C'},
                                        {"delimitedOutput", no_argument, NULL, 'd'},
                                        {"cobiChipDelay", required_argument, NULL, 'u'},
                                        {"useRandom", no_argument, NULL, 'R'},
@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
         use_dwave = true;
     }
 
-    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:IdRNz:Du:", longopts, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:CdRNz:Du:", longopts, &option_index)) != -1) {
         switch (opt) {
             case 'a':
                 strcpy(algo_, optarg);  // algorithm copied off of command line -a option
