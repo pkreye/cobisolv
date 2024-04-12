@@ -2,7 +2,7 @@
 Cobisolv
 ========
 
-This repository is extends `qbsolv <https://github.com/dwavesystems/qbsolv>`_ to support the COBI chip.
+This repository extends `qbsolv <https://github.com/dwavesystems/qbsolv>`_ to support the COBI chip.
 
  .. index-start-marker
 
@@ -19,9 +19,9 @@ Installation or Building
 
 C
 -
-To build the C library first install `pigpio <https://github.com/joan2937/pigpio>`_ library. Then
-use cmake to generate a build command for your system. On Linux the commands would be something like
-this:
+To build the C library you will need to first install `pigpio <https://github.com/joan2937/pigpio>`_
+library. Then use cmake to generate a build command for your system. On Linux the commands would be
+something like this:
 
 .. code-block:: bash
 
@@ -77,6 +77,7 @@ Options are as follows:
     -d
         Final output will be printed as comma delimited data, allowing for aggregation of multiple
         runs in a single data file.
+
     -i infile
         Name of the file for the input QUBO. This option is mandatory.
     -o outfile
@@ -203,8 +204,3 @@ elements of a QUBO benchmark file, not to represent a real problem.
         2  3   -3.22
 
 .. format-end-marker
-
-Library usage
--------------
-
-TODO

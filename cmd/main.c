@@ -359,7 +359,7 @@ int main(int argc, char *argv[]) {
     /* } */
 
     if (Verbose_ > 3) {
-        fprintf(outFile_, "\n\t\"qbsolv  -i %s\" (%d nodes, %d couplers) - end-of-job\n\n", inFileName, nNodes_,
+        fprintf(outFile_, "\n\t\"cobisolv  -i %s\" (%d nodes, %d couplers) - end-of-job\n\n", inFileName, nNodes_,
                 nCouplers_);
     }
     exit(0);
@@ -369,7 +369,7 @@ void print_help(void) {
     printf("\n\t%s -i infile [-o outfile] [-m] [-T] [-n] [-S SubMatrix] [-w] \n"
            "\t\t[-h] [-a algorithm] [-v verbosityLevel] [-V] [-q] [-t seconds]\n"
            "\nDESCRIPTION\n"
-           "\tqbsolv executes a quadratic unconstrained binary optimization \n"
+           "\tcobisolv executes a quadratic unconstrained binary optimization \n"
            "\t(QUBO) problem represented in a file, providing bit-vector \n"
            "\tresult(s) that minimizes (or optionally, maximizes) the value of \n"
            "\tthe objective function represented by the QUBO.  The problem is \n"
@@ -413,7 +413,7 @@ void print_help(void) {
            "\t\tsize specified in the embedding file found in the workspace\n"
            "\t\tset up by DW.  If a DW environment has not been established,\n"
            "\t\tthe value will default to (47) and will use the tabu solver\n"
-           "\t\tfor subproblem solutions.  If a value is specified, qbsolv uses\n"
+           "\t\tfor subproblem solutions.  If a value is specified, cobisolv uses\n"
            "\t\tthat value to create subproblem and solve with the tabu solver. \n"
            "\t-s  solutionIn   \n"
            "\t\tIf present, this optional argument is a filename that is\n"
@@ -425,7 +425,7 @@ void print_help(void) {
            "\t\tmatrix and result in .csv format. \n"
            "\t-h \n"
            "\t\tIf present, this optional argument will print the help or \n"
-           "\t\tusage message for qbsolv and exit without execution. \n"
+           "\t\tusage message for cobisolv and exit without execution. \n"
            "\t-v verbosityLevel \n"
            "\t\tThis optional argument denotes the verbosity of output. A \n"
            "\t\tverbosityLevel of 0 (the default) will output the number of \n"
@@ -437,7 +437,7 @@ void print_help(void) {
            "\t\tthe output up to a value of 4.\n"
            "\t-V \n"
            "\t\tIf present, this optional argument will emit the version \n"
-           "\t\tnumber of the qbsolv program and exit without execution. \n"
+           "\t\tnumber of the cobisolv program and exit without execution. \n"
            "\t-q \n"
            "\t\tIf present, this optional argument triggers printing the \n"
            "\t\tformat of the QUBO file.\n"

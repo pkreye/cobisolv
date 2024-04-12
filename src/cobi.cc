@@ -34,11 +34,8 @@
 extern "C" {
 #endif
 
-#define WL_DELAY         0.00001
-#define SCAN_CLK_DELAY   0.000001
-#define NUM_OF_NODES     100
-#define BITS_PER_SAMPLE  8
 
+//
 #define WEIGHT_2  2
 #define WEIGHT_3  3
 #define SCANOUT_CLK  4
@@ -266,19 +263,6 @@ void _free_array2d(void **a, int w) {
     free(a);
 }
 
-int **_array2d_dup(int *m[], int w, int h)
-{
-    int **result = _malloc_array2d(w, h);
-
-    int i, j;
-    for (i = 0; i < w; i++) {
-        for (j = 0; j < h; j++) {
-            result[i][j] = m[i][j];
-        }
-    }
-
-    return result;
-}
 
 void _array2d_print(int **a, int w, int h)
 {
@@ -454,45 +438,12 @@ void cobi_program_weights(int **programming_bits)
     }
 }
 
-
-/* int cobi_cal_energy_ham() //# cal_energy_ham(self, size, graph_input_file) *\/ */
-/* { */
-/*     // TODO finish */
-/*     // directly implement functionality of graph_helper.qubo_solve_file here */
-
-/*     /\*     num_groups = len(groups) *\/ */
-/*     /\* int ** arr = _malloc_array2d(64, 64); *\/ */
-
-/*     /\* arr = import_graph(arr,infile) *\/ */
-/*     /\* h,j = {},{} *\/ */
-
-/*     /\* for x in range(num_groups): *\/ */
-/*     /\*     for y in range(x+1,num_groups): *\/ */
-/*     /\*         w = 0 *\/ */
-/*     /\*         for x_i in groups[x]: *\/ */
-/*     /\*             for y_i in groups[y]: *\/ */
-/*     /\*                 w = w + arr[62-x_i,y_i+1] + arr[62-y_i,x_i+1] *\/ */
-/*     /\*         if w != 0: *\/ */
-/*     /\*             j[(x,y)] = -w *\/ */
-
-/*     /\* response = QBSolv().sample_ising(h,j, timeout=180) *\/ */
-/*     /\* list(response.samples()) *\/ */
-/*     if(Verbose_ > 0) { */
-/*         /\* print("Tabu search Hamilitonian Values (5 best values)=" + str(list(response.data_vectors['energy'][:5]))); *\/ */
-/*     } */
-
-/*     /\* minenergy = np.min(response.data_vectors['energy']) *\/ */
-/*     int minenergy = 0; */
-/*     return minenergy; */
-
-/* } */
-
 /*
- * cobi_gh_read_spins
+ * cobi_read_spins
  *
  * returns spins via `cobi_data->spins`
  */
-void cobi_gh_read_spins(CobiData *cobi_data)
+void cobi_read_spins(CobiData *cobi_data)
 {
     // chip_data_len must equal 63*7 == 441
     // int const chip_data_len = 441;
@@ -686,7 +637,7 @@ void cobi_gh_cal_energy_direct(int *spins, int **weights, int *hamiltonian, bool
 
 void cobi_gh_cal_energy(CobiData *cobi_data, int *hamiltonian)
 {
-    cobi_gh_read_spins(cobi_data);
+    cobi_read_spins(cobi_data);
 
     /* weights = np.zeros((num_groups,num_groups),dtype=np.int8) */
     int **weights = _malloc_array2d(NUM_GROUPS, NUM_GROUPS);
@@ -914,8 +865,6 @@ int **cobi_init_problem_matrix(int **problem_data, int problem_size)
         exit(1);
     }
 
-    // int **m = _array2d_dup(BLANK_GRAPH, 64, 64);
-
     int **m = _malloc_array2d(64, 64);
 
     int i, j;
@@ -941,6 +890,7 @@ int **cobi_init_problem_matrix(int **problem_data, int problem_size)
     return m;
 }
 
+// Normalize
 void cobi_norm_val(int **norm, double **ising, size_t size)
 {
     // TODO consider alternate mapping/normalization schemes
@@ -959,7 +909,7 @@ void cobi_norm_val(int **norm, double **ising, size_t size)
         }
     }
 
-    // Linear interpolation from -14 to 14
+    // Linear scaling to range [-14, 14]
     // (y + 14) / (x - min) = 28 / (max - min)
     // y = (28 / (max - min)) * (x - min) - 14
     scale_factor = 28 / (max - min);
@@ -1006,10 +956,12 @@ void qubo_solution_from_ising_solution(int8_t *qubo_soln, int8_t *ising_soln, in
     }
 }
 
+
+// Converts problem from qubo to ising formulation.
+// Result is stored in `ising`.
 void ising_from_qubo(double **ising, double **qubo, int size)
 {
-    // qubo is assumed to be an upper triangle matrix
-
+    double h[size];
     for (int i = 0; i < size; i++) {
         // convert linear term
         int h = qubo[i][i] / 2;
