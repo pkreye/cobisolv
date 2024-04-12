@@ -10,9 +10,6 @@ if(COBISOLV_CROSS_COMPILE)
 endif()
 
 project(cobisolv)
-# set(VERSION_MAJOR 2)
-# set(VERSION_MINOR 5)
-# set(VERSION_PATCH 0)
 
 # Set compiler flags for gcc and clang
 if(NOT CMAKE_BUILD_TYPE)
@@ -40,9 +37,6 @@ endif()
 # location of header files
 include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include
 ${PROJECT_SOURCE_DIR}/cmd)
-
-#
-#link_directories(/home/foobar/tools/pigpio-arm)
 
 # Object Library
 add_library(solver OBJECT src/solver.cc src/util.cc src/dwsolv.cc src/cobi.cc)
