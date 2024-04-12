@@ -263,38 +263,6 @@ void _free_array2d(void **a, int w) {
     free(a);
 }
 
-
-void _array2d_print(int **a, int w, int h)
-{
-    int x, y;
-    for (x = 0; x < w; x++) {
-        for (y = 0; y < h; y++) {
-            printf("%d ", a[x][y]);
-        }
-        printf("\n");
-    }
-}
-
-void _array_print(int *a, int len)
-{
-    for (int y = 0; y < len; y++) {
-        printf("%d ", a[y]);
-    }
-    printf("\n");
-}
-
-
-void _array2d_print_double(double **a, int w, int h)
-{
-    int x, y;
-    for (x = 0; x < w; x++) {
-        for (y = 0; y < h; y++) {
-            printf("%.2f ", a[x][y]);
-        }
-        printf("\n");
-    }
-}
-
 void binary_splice_rev(int num, int *bin_list)
 {
     // given num place lower 6 bits, in reverse order, into bin_list
@@ -921,11 +889,11 @@ void cobi_norm_val(int **norm, double **ising, size_t size)
                 norm[i][j] = 0;
                 norm[j][i] = 0;
             } else if (i == j) {
-                  double interpolated = scale_factor * (cur_v - min) - 14;
-                  norm[i][i] = interpolated;
+                double scaled = (28 * (cur_v - min)/ (max - min)) - 14;
+                  norm[i][i] = scaled;
             } else {
-                double interpolated = scale_factor * (cur_v - min) - 14;
-                int symmetric_val = (int) round(interpolated / 2);
+                double scaled = ((28 * (cur_v - min)) / (max - min)) - 14;
+                int symmetric_val = (int) round(scaled / 2);
                 norm[i][j] = symmetric_val;
                 norm[j][i] = symmetric_val;
             }
@@ -961,19 +929,16 @@ void qubo_solution_from_ising_solution(int8_t *qubo_soln, int8_t *ising_soln, in
 // Result is stored in `ising`.
 void ising_from_qubo(double **ising, double **qubo, int size)
 {
-    double h[size];
     for (int i = 0; i < size; i++) {
-        // convert linear term
-        int h = qubo[i][i] / 2;
-        // for(int k = i + 1; k < size; k++) {
-        //     // sum over neighbors of i
-        //     h += qubo[i][k] / 2;
-        // }
-        ising[i][i] = h;
+        ising[i][i] = qubo[i][i] / 2;
 
-        // convert quadratic terms
         for (int j = i + 1; j < size; j++) {
-            ising[i][j] = qubo[i][j] / 2;
+            // convert quadratic terms
+            ising[i][j] = qubo[i][j] / 4;
+            ising[j][i] = qubo[j][i] / 4;
+
+            // add rest of linear term
+            ising[i][i] += ising[i][j] + ising[j][i];
         }
     }
 }
@@ -1001,42 +966,42 @@ bool cobi_established()
 }
 
 void cobi_solver(
-    double **qubo, int maxNodes, int8_t *qubo_solution, int num_samples, int chip_delay, bool descend
+    double **qubo, int numSpins, int8_t *qubo_solution, int num_samples, int chip_delay, bool descend
 ) {
-    if (maxNodes > 59) {
-        printf("Quitting.. cobi_solver called with size %d. Cannot be greater than 59.\n", maxNodes);
+    if (numSpins > 59) {
+        printf("Quitting.. cobi_solver called with size %d. Cannot be greater than 59.\n", numSpins);
         exit(2);
     }
 
     int sample_bits = 8;   //# use 8 bits sampling
 
-    CobiData *cobi_data = cobi_data_mk(maxNodes, chip_delay, descend);
-    int8_t *ising_solution = (int8_t*)malloc(sizeof(int8_t) * maxNodes);
-    double **ising = _malloc_double_array2d(maxNodes, maxNodes);
-    int **norm_val = _malloc_array2d(maxNodes, maxNodes);
+    CobiData *cobi_data = cobi_data_mk(numSpins, chip_delay, descend);
+    int8_t *ising_solution = (int8_t*)malloc(sizeof(int8_t) * numSpins);
+    double **ising = _malloc_double_array2d(numSpins, numSpins);
+    int **norm_ising = _malloc_array2d(numSpins, numSpins);
 
-    ising_from_qubo(ising, qubo, maxNodes);
-    cobi_norm_val(norm_val, ising, maxNodes);
+    ising_from_qubo(ising, qubo, numSpins);
+    cobi_norm_val(norm_ising, ising, numSpins);
 
-    int **mtx = cobi_init_problem_matrix(norm_val, maxNodes);
+    int **mtx = cobi_init_problem_matrix(norm_ising, numSpins);
     cobi_modify_array_for_pins(mtx, cobi_data->programming_bits, 63);
 
     // Convert solution from QUBO to ising
-    ising_solution_from_qubo_solution(ising_solution, qubo_solution, maxNodes);
+    ising_solution_from_qubo_solution(ising_solution, qubo_solution, numSpins);
 
     //
     int *results = cobi_test_multi_times(
-        cobi_data, num_samples, sample_bits, maxNodes, ising_solution
+        cobi_data, num_samples, sample_bits, numSpins, ising_solution
     );
 
     // Convert ising solution back to QUBO form
-    qubo_solution_from_ising_solution(qubo_solution, ising_solution, maxNodes);
+    qubo_solution_from_ising_solution(qubo_solution, ising_solution, numSpins);
 
     free(results);
     free_cobi_data(cobi_data);
     free(ising_solution);
-    _free_array2d((void**)ising, maxNodes);
-    _free_array2d((void**)norm_val, maxNodes);
+    _free_array2d((void**)ising, numSpins);
+    _free_array2d((void**)norm_ising, numSpins);
     _free_array2d((void**)mtx, 64);
 }
 
