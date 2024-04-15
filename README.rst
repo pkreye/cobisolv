@@ -55,17 +55,20 @@ results that minimizes---or optionally, maximizes---the value of
 the objective function represented by the QUBO.  The problem is
 represented in QUBO(5) file format.
 
-The QUBO input problem is not limited to the graph size or connectivity of a
-sampler, for example the D-Wave system.
+The QUBO input problem is not limited to the graph size or connectivity of the
+sampler.
 
 Options are as follows:
 
 .. code::
 
+    -i infile
+        Name of the file for the input QUBO. This option is mandatory.
     -C
-        If present, use cobi chip to solve subproblems.
+        If present, use cobi chip to solve subproblems. Without this option subproblems will be
+        solved with tabu search.
     -z numSamples
-        Number of solutions to sample from cobi chip. Defaults to 10.
+        Number of solutions to sample from COBI chip. Defaults to 10.
     -p preSearchPassFactor
         Scale the amount of classical tabu search to be performed before decomposing problem to
         subproblems. Defaults to 0. Standard qbsolv uses 6500.
@@ -75,9 +78,6 @@ Options are as follows:
     -d
         Final output will be printed as comma delimited data, allowing for aggregation of multiple
         runs in a single data file.
-
-    -i infile
-        Name of the file for the input QUBO. This option is mandatory.
     -o outfile
         Optional output filename.
         Default is the standard output.
