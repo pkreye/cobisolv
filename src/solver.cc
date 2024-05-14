@@ -617,13 +617,14 @@ void cobi_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, voi
 {
     parameters_t *params = (parameters_t*) sub_sampler_data;
 
-    cobi_solver(sub_qubo, subMatrix, sub_solution, params->cobi_num_samples, params->cobi_delay, params->cobi_descend);
+    cobi_solver(sub_qubo, subMatrix, sub_solution, params->cobi_num_samples, params->cobi_delay, false);
 
-    int64_t sub_bit_flips = 0;
-    double *flip_cost = (double *)malloc(sizeof(double) * subMatrix);
-    local_search(sub_solution, subMatrix, sub_qubo, flip_cost, &sub_bit_flips);
-
-    free(flip_cost);
+    if (params->cobi_descend) {
+        int64_t sub_bit_flips = 0;
+        double *flip_cost = (double *)malloc(sizeof(double) * subMatrix);
+        local_search(sub_solution, subMatrix, sub_qubo, flip_cost, &sub_bit_flips);
+        free(flip_cost);
+    }
 }
 
 void rand_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *sub_sampler_data)
@@ -938,7 +939,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
 
 
         if (TabuPass_factor == 0) {
-            energy = evaluate(solution, qubo_size, (const double **)qubo, flip_cost);
+            energy = local_search(solution, qubo_size, qubo, flip_cost, &bit_flips);
         } else {
             startTime = omp_get_wtime();
             energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,
