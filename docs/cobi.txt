@@ -26,6 +26,10 @@ solutions. Defaults to 0. Standard qbsolv uses 1700.
 Final output will be printed as comma delimited data, allowing for aggregation of multiple runs in a
 single data file.
 
+-a b
+Use BFS decomposer. When generating the subproblems, a random variable is chosen as a root vertex
+and BFS is performed from there to populate the subproblem.
+
 =========
 Examples:
 =========
@@ -33,6 +37,8 @@ Examples:
 $ sudo ./cobisolv -C -i ./data/bqp100_5.qubo
 
 $ sudo ./cobisolv -p 100 -g 200 -z 5 -C -i ./data/bqp100_5.qubo
+
+$ sudo ./cobisolv -a b -C -i ./data/bqp100_5.qubo
 
 ======
 Output

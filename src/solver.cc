@@ -748,7 +748,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
 
     // run initial Searches to prime the solutions for outer loop based upon algorithm choice
     //
-    if (strncmp(&algo_[0], "o", strlen("o")) == 0) {
+    if (algo_[0] == 'o' || algo_[0] == 'b') {
         IterMax = bit_flips + (int64_t)MAX((int64_t)400, InitialTabuPass_factor * (int64_t)qubo_size);
         if (Verbose_ > 2) {
             DLT;
@@ -770,7 +770,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                                   qubo_size, &num_nq_solutions);
         Qbest = &solution_list[Qindex[0]][0];
 
-    } else if (strncmp(&algo_[0], "d", strlen("d")) == 0) {
+    } else if (algo_[0] == 'd') {
         // when using this method we need at least solutions for a "differential" backbone this
         // step is to prime the solution sets with at least one more
         //
@@ -832,7 +832,12 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
     while (ContinueWhile) {
         // these are of the size that will use updates from submatrix processing
         if ((qubo_size > 20 && subMatrix <= qubo_size)) {
-            if (strncmp(&algo_[0], "o", strlen("o")) == 0) {
+            if (algo_[0] == 'b') {
+                l_max = MIN(qubo_size - subMatrix, MaxNodes_sub);
+                l_max = MAX(l_max, 1);
+                if (Verbose_ > 1)
+                    printf("Reduced submatrix solution l = 0; %d, subMatrix size = %d\n", l_max, subMatrix);
+            } else if (algo_[0] == 'o') {
                 // use the first "remove" index values to remove rows and columns from new matrix
                 // initial TabuK to nothing tabu sub_solution[i] = Q[i];
                 // create compression bit vector
@@ -841,7 +846,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                 l_max = MAX(l_max, 1);
                 if (Verbose_ > 1)
                     printf("Reduced submatrix solution l = 0; %d, subMatrix size = %d\n", l_max, subMatrix);
-            } else if (strncmp(&algo_[0], "d", strlen("d")) == 0) {
+            } else if (algo_[0] == 'd') {
                 // pick "backbone" as an index of non-matching bits in solutions
                 //
                 len_index = mul_index_solution_diff(solution_list, num_nq_solutions, qubo_size, Pcompress, 0, Qindex);
@@ -867,10 +872,14 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                  {  // scope of parallel region
                     int t_change = 0;
                     int *Icompress;
-                    if (GETMEM(Icompress, int, qubo_size) == NULL) BADMALLOC // TODO ? consider optimization via allocating outside of loop
+                    int subQuboSize = subMatrix;
+                    if (GETMEM(Icompress, int, subMatrix) == NULL) BADMALLOC // TODO ? consider optimization via allocating outside of loop
 
                     for (l = 0; l < l_max; l += subMatrix) {
-                        if (strncmp(&algo_[0], "o", strlen("o")) == 0) {
+                        if (algo_[0] == 'b') {
+                            subQuboSize = bfs_get_new_sub_qubo(qubo, qubo_size, subMatrix, Icompress);
+                            index_sort(Icompress, subMatrix, true);  // sort it for effective reduction
+                        } else if (algo_[0] == 'o') {
                             if (Verbose_ > 3) printf("Submatrix starting at backbone %d\n", l);
 
                             for (int i = l, j = 0; i < l + subMatrix; i++) {
@@ -879,7 +888,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                             index_sort(Icompress, subMatrix, true);  // sort it for effective reduction
 
                             // coarsen and reduce the problem
-                        } else if (strncmp(&algo_[0], "d", strlen("d")) == 0) {
+                        } else if (algo_[0] == 'd') {
                             if (Verbose_ > 3) printf("Submatrix starting at backbone %d\n", l);
                             int i_strt = l;
                             if (l + subMatrix > len_index)
@@ -888,7 +897,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                                 Icompress[j++] = Pcompress[i];  // create compression index
                             }
                         }
-                        t_change = reduce_solve_projection(Icompress, qubo, qubo_size, subMatrix, solution, param);
+                        t_change = reduce_solve_projection(Icompress, qubo, qubo_size, subQuboSize, solution, param);
 
                         // do the following in a critical region
                         // #pragma omp critical
@@ -906,12 +915,11 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
 
                 // submatrix search did not produce enough new values, so randomize those bits
                 if (change <= 2) {
-                    if (strncmp(&algo_[0], "o", strlen("o")) == 0) {
+                    if (algo_[0] == 'o' || algo_[0] == 'b') {
                         flip_solution_by_index(solution, l, index);
                         // randomize_solution_by_index(solution, l, index);
-                    } else if (strncmp(&algo_[0], "d", strlen("d")) == 0) {
-                        len_index = mul_index_solution_diff(solution_list, num_nq_solutions, qubo_size, Pcompress, 0,
-                                                            Qindex);
+                    } else if (algo_[0] == 'd') {
+                        len_index = mul_index_solution_diff(solution_list, num_nq_solutions, qubo_size, Pcompress, 0, Qindex);
                         flip_solution_by_index(solution, len_index, Pcompress);
                         // randomize_solution_by_index(solution, len_index, Pcompress);
                     }

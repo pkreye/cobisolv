@@ -259,7 +259,7 @@ void print_delimited_output(
     // for (i = 0; i < maxNodes; i++) {
     //     fprintf(outFile_, "%d", solution[i]);
     // }
-    fprintf(outFile_, "%s, %d, %d, %.1f, %ld, %.4f, %.4f, %.4f, %.4f, %lld\n",
+    fprintf(outFile_, "%s, %d, %d, %.1f, %ld, %.4f, %.4f, %.4f, %.4f, %ld\n",
             param->problemName,
             param->preSearchPassFactor,
             param->globalSearchPassFactor,
@@ -764,6 +764,70 @@ void write_qubo(double **qubo, int nMax, const char *filename) {
         }
     }
     fclose(file);
+}
+
+// BFS Decomposer
+
+bool _int_array_memb(int *a, int len, int test) {
+    for (int k = 0; k < len; k++) {
+        if (a[k] == test) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/*
+ * Get a new sub qubo by traversing the qubo problem with BFS, starting from a random vertex.
+ * Once we have explored `subQuboSize` number of vertices we have enough to create the new sub problem,
+ * we are done.
+ */
+int bfs_get_new_sub_qubo(double **qubo, const int quboSize, const int subQuboSize, int *subQuboVars)
+{
+    int curVertex;
+    int varIndex = 0;
+    int *queue;
+    int queueBot = 0;
+    int queueTop = 0;
+    int *seen;
+    if (GETMEM(seen, int, quboSize) == NULL) BADMALLOC
+    if (GETMEM(queue, int, subQuboSize) == NULL) BADMALLOC
+
+    memset(seen, 0, quboSize*sizeof(int));
+
+    queue[queueTop++] = rand() % quboSize;
+    subQuboVars[varIndex++] = queue[0];
+    seen[queue[0]] = 1;
+
+    while (varIndex < subQuboSize) {
+        if (queueBot == queueTop) {
+            // If we have exhausted the current connected components but do not have enough
+            // variables, randomize until we find something new.
+            while (seen[curVertex]) {
+                curVertex = rand() % quboSize;
+            }
+            queue[queueTop++] = curVertex;
+            subQuboVars[varIndex++] = curVertex;
+            seen[curVertex] = 1;
+        }
+
+        curVertex = queue[queueBot++];
+
+        for (int j = curVertex + 1; j < quboSize; j++) {
+            if (qubo[curVertex][j] != 0 && !seen[j]) {
+                queue[queueTop++] = j;
+                subQuboVars[varIndex++] = j;
+                seen[j] = 1;
+
+                if (varIndex >= subQuboSize) break;
+            }
+        }
+    }
+
+    free(seen);
+    free(queue);
+
+    return varIndex;
 }
 
 /*double roundit(double value, int digits)

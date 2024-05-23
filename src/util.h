@@ -136,6 +136,9 @@ struct sol_man_rslt manage_solutions(int8_t *solution_now, int8_t **solution_lis
 // write qubo file to *filename
 void write_qubo(double **qubo, int nMax, const char *filename);
 
+// BFS Decomposer
+int bfs_get_new_sub_qubo(double **qubo, const int quboSize, const int subQuboSize, int *subQuboVars);
+
 #if _WIN32
 size_t getline(char **lineptr, size_t *n, FILE *stream);
 #endif

@@ -137,6 +137,9 @@ int main(int argc, char *argv[]) {
                     case 'd':
                         // choose "Solution diversity"
                         break;
+                    case 'b':
+                        // BFS decomposer
+                        break;
                     default: /* unknown */
                         printf(" Unknown Algorithm choice: options are o:d cmdline had %s \n", algo_);
                         exit(9);
@@ -255,7 +258,6 @@ int main(int argc, char *argv[]) {
             case 'D':
                 param.cobi_descend = true;
                 break;
-
             default: /* '?' or unknown */
                 print_help();
                 exit(0);
@@ -408,7 +410,8 @@ void print_help(void) {
            "\t\t This optional argument chooses nuances of the outer loop\n"
            "\t\t algorithm.  The default is o.\n"
            "\t\t \'o\' for original qbsolv method. Submatrix based upon change in energy.\n"
-           "\t\t \'d\' for solution diversity.  Submatrix based upon differences of solutions\n"
+           "\t\t \'d\' for solution diversity. Submatrix based upon differences of solutions\n"
+           "\t\t \'b\' for BFS decomposer. Submatrix based upon breadth-first search.\n"
            "\t-m \n"
            "\t\tThis optional argument denotes to find the maximum instead \n"
            "\t\tof the minimum. \n"

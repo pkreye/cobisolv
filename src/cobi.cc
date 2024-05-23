@@ -756,7 +756,6 @@ int *cobi_test_multi_times(
     GPIO_WRITE(WEIGHT_EN, PI_HIGH);
     GPIO_WRITE_DELAY(WEIGHT_EN, PI_LOW, cobi_data->chip_delay);
 
-
     while (times < sample_times) {
         if (Verbose_ > 2) {
             printf("\nSample number %d\n", times);
@@ -791,7 +790,6 @@ int *cobi_test_multi_times(
 int **cobi_init_problem_matrix(int **problem_data, int problem_size)
 {
     if (problem_size > NUM_GROUPS) {
-        // TODO? handle problem sizes between 0 and 59?
         printf("Bad problem size: %d\n", problem_size);
         exit(1);
     }
@@ -805,9 +803,9 @@ int **cobi_init_problem_matrix(int **problem_data, int problem_size)
         }
     }
 
-    for (int x = 0; x < NUM_GROUPS; x++) {
+    for (int x = 0; x < problem_size; x++) {
         i = COBIFIXED65_BASEGROUPS[x];
-        for (int y = 0; y < NUM_GROUPS; y++) {
+        for (int y = 0; y < problem_size; y++) {
 
             j = COBIFIXED65_BASEGROUPS[y];
 
