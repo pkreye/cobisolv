@@ -785,21 +785,18 @@ bool _int_array_memb(int *a, int len, int test) {
 int bfs_get_new_sub_qubo(double **qubo, const int quboSize, const int subQuboSize, int *subQuboVars)
 {
     int curVertex;
-    int varIndex = 0;
-    int *queue;
+    int *queue = subQuboVars;
     int queueBot = 0;
     int queueTop = 0;
     int *seen;
     if (GETMEM(seen, int, quboSize) == NULL) BADMALLOC
-    if (GETMEM(queue, int, subQuboSize) == NULL) BADMALLOC
 
     memset(seen, 0, quboSize*sizeof(int));
 
     queue[queueTop++] = rand() % quboSize;
-    subQuboVars[varIndex++] = queue[0];
     seen[queue[0]] = 1;
 
-    while (varIndex < subQuboSize) {
+    while (queueTop < subQuboSize) {
         if (queueBot == queueTop) {
             // If we have exhausted the current connected components but do not have enough
             // variables, randomize until we find something new.
@@ -807,8 +804,9 @@ int bfs_get_new_sub_qubo(double **qubo, const int quboSize, const int subQuboSiz
                 curVertex = rand() % quboSize;
             }
             queue[queueTop++] = curVertex;
-            subQuboVars[varIndex++] = curVertex;
             seen[curVertex] = 1;
+
+            if (queueTop >= subQuboSize) break;
         }
 
         curVertex = queue[queueBot++];
@@ -816,18 +814,16 @@ int bfs_get_new_sub_qubo(double **qubo, const int quboSize, const int subQuboSiz
         for (int j = curVertex + 1; j < quboSize; j++) {
             if (qubo[curVertex][j] != 0 && !seen[j]) {
                 queue[queueTop++] = j;
-                subQuboVars[varIndex++] = j;
                 seen[j] = 1;
 
-                if (varIndex >= subQuboSize) break;
+                if (queueTop >= subQuboSize) break;
             }
         }
     }
 
     free(seen);
-    free(queue);
 
-    return varIndex;
+    return queueTop;
 }
 
 /*double roundit(double value, int digits)

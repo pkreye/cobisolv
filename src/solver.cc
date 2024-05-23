@@ -528,7 +528,7 @@ int reduce_solve_projection(int *Icompress, double **qubo, int qubo_size, int su
 
     double **sub_qubo;
 
-    sub_qubo = (double **)malloc2D(qubo_size, qubo_size, sizeof(double));
+    sub_qubo = (double **)malloc2D(subMatrix, subMatrix, sizeof(double));
 
     reduce(Icompress, qubo, subMatrix, qubo_size, sub_qubo, solution, sub_solution);
     // solve
