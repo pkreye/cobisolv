@@ -27,9 +27,10 @@ something like this:
     cmake ..
     make
 
-To build the command line interface turn the cmake option `COBISOLV_BUILD_CMD` on. The command line option for cmake to do
-this would be `-DCOBISOLV_BUILD_CMD=ON`. To build the tests turn the cmake option `COBISOLV_BUILD_TESTS` on. The command
-line option for cmake to do this would be `-DCOBISOLV_BUILD_TESTS=ON`.
+To build the command line interface turn the cmake option `COBISOLV_BUILD_CMD` on. The command line
+option for cmake to do this would be `-DCOBISOLV_BUILD_CMD=ON`. To build the tests turn the cmake
+option `COBISOLV_BUILD_TESTS` on. The command line option for cmake to do this would be
+`-DCOBISOLV_BUILD_TESTS=ON`.
 
 For cross compiling to Raspberry Pi add the cmake option `-DCOBISOLV_CROSS_COMPILE=ON`. This will
 require that you cross compile pigpio as well.
@@ -118,6 +119,12 @@ Options are as follows:
         If present, prints the format of the QUBO file.
     -r seed
         Used to reset the seed for the random number generation.
+    -a algorithm
+        This optional argument chooses nuances of the outer loop algorithm. The default is 'o'.
+        'o' for original qbsolv method. Submatrix based upon change in energy.
+        'd' for solution diversity. Submatrix based upon differences of solutions.
+        'b' for BFS decomposer. Submatrix based upon breadth-first search traversal of problem.
+
 
 .. usage-end-marker
 
