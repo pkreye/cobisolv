@@ -645,7 +645,7 @@ parameters_t default_parameters() {
     param.num_output_solutions = 1;
     param.repeats = 50;
     param.sub_sampler = &tabu_sub_sample;
-    param.sub_size = 47;
+    param.sub_size = 46;
     param.sub_sampler_data = NULL;
     param.preSearchPassFactor = 0;
     param.globalSearchPassFactor = 0;

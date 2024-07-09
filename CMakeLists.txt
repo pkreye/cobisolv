@@ -51,7 +51,7 @@ if(COBISOLV_BUILD_CMD)
 
     # link library
     target_link_libraries(cobisolv libcobisolv)
-    target_link_libraries(cobisolv pigpio)
+    target_link_libraries(cobisolv lgpio)
 endif()
 
 if(COBISOLV_BUILD_TESTS)

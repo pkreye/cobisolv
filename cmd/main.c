@@ -303,7 +303,7 @@ int main(int argc, char *argv[]) {
             exit(2);
         }
 
-        param.sub_size = 59;
+        param.sub_size = 46;
         param.sub_sampler = &cobi_sub_sample;
         param.sub_sampler_data = &param;
     }

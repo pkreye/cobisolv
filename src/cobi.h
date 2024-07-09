@@ -19,31 +19,49 @@ extern "C" {
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <pigpio.h>
+// #include <pigpio.h>
+#include <lgpio.h>
 
 int usleep(long usecs);
 
-#define GPIO_WRITE(pin, val)                                            \
-    if (gpioWrite(pin, val) != 0) {                                     \
-        printf("\n ERROR: bad gpio write: %s(%s.%d)\n\n", __FUNCTION__, __FILE__, __LINE__); \
+#define GPIO_READ(pi, pin) lgGpioRead(pi, pin)
+
+#define GPIO_WRITE(pi, pin, val)                                         \
+    if (lgGpioWrite(pi, pin, val) != 0) {                                  \
+        printf("\n ERROR: bad gpio write on %d: %s(%d)\n\n", pin, __FUNCTION__, __LINE__); \
         exit(9);                                                        \
     }
 
-
-#define GPIO_WRITE_DELAY(pin, val, delay)                               \
-    if (gpioWrite(pin, val) != 0) {                                     \
-        printf("\n ERROR: bad gpio write: %s(%s.%d)\n\n", __FUNCTION__, __FILE__, __LINE__); \
+#define GPIO_WRITE_DELAY(pi, pin, val, delay)                            \
+    if (lgGpioWrite(pi, pin, val) != 0) {                               \
+        printf("\n ERROR: bad gpio write on %d: %s(%d)\n\n", pin,  __FUNCTION__, __LINE__); \
         exit(9);                                                        \
     }                                                                   \
     usleep(delay);
 
+#define GPIO_OUTPUT_FLAGS 0
+#define GPIO_CLAIM_OUTPUT(pi, pin)                                      \
+    if (lgGpioClaimOutput(pi, GPIO_OUTPUT_FLAGS, pin, 0) != 0) {        \
+        printf("\nERROR: GPIO cannot set output mode on %d: %s(%d)\n\n", pin, __FUNCTION__, __LINE__); \
+        exit(9);                                                        \
+    }
+
+#define GPIO_INPUT_FLAGS 0
+#define GPIO_CLAIM_INPUT(pi, pin)                                       \
+    if (lgGpioClaimInput(pi, GPIO_INPUT_FLAGS, pin) != 0) {             \
+        printf("\nERROR: GPIO cannot set input mode on %d: %s(%d)\n\n", pin, __FUNCTION__, __LINE__); \
+        exit(9);                                                        \
+    }
+
+#define GPIO_HIGH 1
+#define GPIO_LOW  0
 
 typedef struct CobiData {
     size_t probSize;
     size_t w;
     size_t h;
     int **programming_bits;
-    uint8_t *chip2_test;
+    uint8_t *chip_output;
     int num_samples;
     int *spins;
     int64_t chip_delay;
