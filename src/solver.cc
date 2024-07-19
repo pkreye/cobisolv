@@ -1048,7 +1048,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
 
     // If `param->output_solutions` is 0 print all unique solutions
     int num_output_solutions = param->num_output_solutions;
-    if (param->num_output_solutions = 0) {
+    if (param->num_output_solutions == 0) {
         num_output_solutions = num_nq_solutions;
     }
 
