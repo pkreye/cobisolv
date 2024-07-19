@@ -30,6 +30,7 @@ typedef void (*SubSolver)(double**, int, int8_t*, void*);
 
 // A parameter structure used to pass in optional arguments to the qbsolv: solve method.
 typedef struct parameters_t {
+    int32_t num_output_solutions;
     // The number of iterations without improvement before giving up
     int32_t repeats;
     // Callback function to solve the sub-qubo

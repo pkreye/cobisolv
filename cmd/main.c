@@ -112,11 +112,8 @@ int main(int argc, char *argv[]) {
                                        {"globalSearchPassFactor", required_argument, NULL, 'g'},
                                        {"useCobi", no_argument, NULL, 'C'},
                                        {"delimitedOutput", no_argument, NULL, 'd'},
-                                       {"cobiChipDelay", required_argument, NULL, 'u'},
-                                       {"useRandom", no_argument, NULL, 'R'},
-                                       {"useNull", no_argument, NULL, 'N'},
                                        {"cobiNumSamples", required_argument, NULL, 'z'},
-                                       {"cobiDescend", no_argument, NULL, 'D'},
+                                       {"numOutputSolutions", required_argument, NULL, 'N'},
                                        {NULL, no_argument, NULL, 0}};
 
     int opt, option_index = 0;
@@ -126,7 +123,7 @@ int main(int argc, char *argv[]) {
         use_dwave = true;
     }
 
-    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:CdRNz:Du:", longopts, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:Cdz:N:", longopts, &option_index)) != -1) {
         switch (opt) {
             case 'a':
                 strcpy(algo_, optarg);  // algorithm copied off of command line -a option
@@ -235,21 +232,15 @@ int main(int argc, char *argv[]) {
                 // Overwrite the repeated global tabu search pass factor
                 param.globalSearchPassFactor = strtol(optarg, &chx, 10);
                 break;
-            case 'u':
-                // Get delay to use when waiting for cobi chip, in microsecond
-                param.cobi_delay = strtol(optarg, &chx, 10);
-                break;
             case 'C':
                 use_cobi = true;
                 break;
             case 'd':
                 delimitedOutput = true;
                 break;
-            case 'R':
-                use_rand = true;
-                break;
             case 'N':
-                use_null = true;
+                // Number of solutions to output
+                param.num_output_solutions = strtol(optarg, &chx, 10);
                 break;
             case 'z':
                 // Number of samples to take when solving a subqubo with the cobi chip
@@ -390,6 +381,9 @@ void print_help(void) {
            "\t-z numSamples \n"
            "\t\tOptional argument that sets the number of solutions to\n"
            "\t\tsample from the cobi chip for each subproblem. Defaults to 10.\n"
+           "\t-N numOutputSolutions"
+           "\t\tOptional argument that sets the number of unique solutions to be output.\n"
+           "\t\tIf the value provided is 0, all unique solutions will be output.\n"
            "\t-p preSearchPassFactor\n"
            "\t\tScale the amount of classical tabu search to be performed\n"
            "\t\tbefore decomposing problem to subproblems. Defaults to 0.\n"

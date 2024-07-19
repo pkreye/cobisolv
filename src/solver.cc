@@ -642,6 +642,7 @@ void null_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, voi
 // Define the default set of parameters for the solve routine
 parameters_t default_parameters() {
     parameters_t param;
+    param.num_output_solutions = 1;
     param.repeats = 50;
     param.sub_sampler = &tabu_sub_sample;
     param.sub_size = 47;
@@ -719,6 +720,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
     // get some memory for reduced sub matrices
     // int8_t  *sub_solution, *Qt_s, *Qbest;
     int8_t *Qbest;
+    int solution_count;
     double best_energy;
     int *Pcompress;
 
@@ -769,6 +771,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
         result = manage_solutions(solution, solution_list, energy, energy_list, solution_counts, Qindex, QLEN,
                                   qubo_size, &num_nq_solutions);
         Qbest = &solution_list[Qindex[0]][0];
+        solution_count = solution_counts[Qindex[0]];
 
     } else if (algo_[0] == 'd') {
         // when using this method we need at least solutions for a "differential" backbone this
@@ -794,6 +797,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                                   qubo_size, &num_nq_solutions);
         Qbest = &solution_list[Qindex[0]][0];
         best_energy = energy_list[Qindex[0]];
+        solution_count = solution_counts[Qindex[0]];
 
     } else {
         fprintf(stderr, "Did not recognize algorithm %s\n", algo_);
@@ -802,7 +806,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
 
     val_index_sort(index, flip_cost, qubo_size);  // create index array of sorted values
     if (Verbose_ > 0) {
-        print_output(qubo_size, solution, numPartCalls, best_energy * sign, param);
+        print_solution(qubo_size, solution, solution_count, best_energy * sign);
     }
     if (Verbose_ > 1) {
         DLT;
@@ -966,6 +970,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                                   qubo_size, &num_nq_solutions);
         Qbest = &solution_list[Qindex[0]][0];
         best_energy = energy_list[Qindex[0]];
+        solution_count = solution_counts[Qindex[0]];
 
         // print_solutions( solution_list,energy_list,solution_counts,num_nq_solutions,qubo_size,Qindex);
         if (result.code == NEW_HIGH_ENERGY_UNIQUE_SOL) {  // better solution
@@ -976,7 +981,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                 printf(" IMPROVEMENT; RepeatPass set to %d\n", RepeatPass);
             }
             if (Verbose_ > 0) {
-                print_output(qubo_size, Qbest, numPartCalls, best_energy * sign, param);
+                print_solution(qubo_size, Qbest, solution_count, best_energy * sign);
             }
         } else if (result.code == DUPLICATE_ENERGY ||
                    result.code == DUPLICATE_HIGHEST_ENERGY) {  // equal solution, but it is different
@@ -989,7 +994,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
             }
             if (result.code == DUPLICATE_HIGHEST_ENERGY && result.count == 1) {
                 if (Verbose_ > 0) {
-                    print_output(qubo_size, Qbest, numPartCalls, best_energy * sign, param);
+                    print_solution(qubo_size, Qbest, solution_count, best_energy * sign);
                 }
             }
         } else if (result.code == NOTHING) {  // not as good as our worst so far
@@ -1030,37 +1035,34 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
         }
     }  // end of outer loop
 
-    // all done print results if needed and free allocated arrays
-    if (WriteMatrix_) print_solution_and_qubo(Qbest, qubo_size, qubo);
+    double final_time = omp_get_wtime() - initialStartTime;
+
 
     Qbest = &solution_list[Qindex[0]][0];
     best_energy = energy_list[Qindex[0]];
+    solution_count = solution_counts[Qindex[0]];
 
-    if (Verbose_ == 0) {
-        // printf(" evaluated solution %8.2lf\n",
-        //     sign * Simple_evaluate(Qbest, qubo_size, (const double **)qubo));
-        double finalTime = omp_get_wtime() - initialStartTime;
+    // all done print results if needed and free allocated arrays
+    if (WriteMatrix_) print_solution_and_qubo(Qbest, qubo_size, qubo);
 
-        if (delimitedOutput) {
-            print_delimited_output(
-                qubo_size, Qbest, numPartCalls, best_energy * sign,
-                finalTime, initialTabuTime, globalTabuTime, subQuboTime, param
-            );
-        } else {
-            print_output_with_subprob_time(
-                qubo_size, Qbest, numPartCalls, best_energy * sign,
-                finalTime, subQuboTime, param
-            );
-        }
-    } else if (Verbose_ > 0){
-        Qbest = &solution_list[Qindex[0]][0];
-        best_energy = energy_list[Qindex[0]];
-        // printf(" evaluated solution %8.2lf\n",
-        //     sign * Simple_evaluate(Qbest, qubo_size, (const double **)qubo));
-        double finalTime = omp_get_wtime() - initialStartTime;
-        print_output_with_subprob_time(
-            qubo_size, Qbest, numPartCalls, best_energy * sign,
-            finalTime, subQuboTime, param
+
+    // If `param->output_solutions` is 0 print all unique solutions
+    int num_output_solutions = param->num_output_solutions;
+    if (param->num_output_solutions = 0) {
+        num_output_solutions = num_nq_solutions;
+    }
+
+    if (delimitedOutput) {
+        print_delimited_output(
+            energy_list, sign, solution_counts, Qindex,
+            num_output_solutions, numPartCalls,
+            final_time, subQuboTime, initialTabuTime, globalTabuTime,
+            param
+        );
+    } else {
+        print_output(
+            qubo_size, solution_list, energy_list, sign, solution_counts, Qindex,
+            num_output_solutions, numPartCalls, final_time, subQuboTime, param
         );
     }
 

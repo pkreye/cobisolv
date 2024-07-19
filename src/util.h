@@ -76,19 +76,22 @@ void print_solution_and_qubo(int8_t *solution, int maxNodes, double **qubo);
 //  This routine prints without \n the options for the run
 void print_opts(int maxNodes, parameters_t *param);
 
-//  This routine performs the standard output for qbsolv
-void print_output(int maxNodes, int8_t *solution, long numPartCalls, double energy, parameters_t *param);
+// Prints a qubo solution in the standard output format
+void print_solution(int maxNodes, int8_t *solution, int solution_count, double energy);
 
-void print_output_with_subprob_time(
-    int maxNodes, int8_t *solution, long numPartCalls, double energy,
-    double totalTime, double subQuboTime, parameters_t *param
+//  This routine performs the standard output for qbsolv
+void print_output(
+    int qubo_size, int8_t **solution_list, double *energy_list, int sign, int *solution_counts,
+    int *index, int num_solutions, long num_subprobs,
+    double total_time, double subprob_time, parameters_t *param
 );
 
 void print_delimited_output(
-    int maxNodes, int8_t *solution, long numPartCalls, double energy, double totalTime,
-    double initialTabuTime, double globalTabuTime, double subQuboTime, parameters_t *param
+    double *energy_list, int sign, int *solution_counts, int *index,
+    int num_solutions, long num_subprobs,
+    double total_time, double subprob_time, double initial_tabu_time, double global_tabu_time,
+    parameters_t *param
 );
-
 
 /* val[] --> Array to be sorted,
    arr[] --> index to point to order from largest to smallest
@@ -126,8 +129,7 @@ int mul_index_solution_diff(int8_t **solution, int num_solutions, int nbits, int
                             int *sol_index);
 
 //  print out each solution in index order per qbsolv output format
-void print_solutions(int8_t **solution, double *energy_list, int *solutions_counts, int num_solutions, int nbits,
-                     int *index);
+void print_solutions(int8_t **solution, double *energy_list, int *solutions_counts, int num_solutions, int nbits, int *index);
 
 struct sol_man_rslt manage_solutions(int8_t *solution_now, int8_t **solution_list, double energy_now,
                                      double *energy_list, int *solution_counts, int *list_order, int nMax, int nbits,

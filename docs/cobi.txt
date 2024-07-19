@@ -14,6 +14,10 @@ If present, use cobi chip to solve sub-problems.
 -z numSamples
 Number of solutions to sample from cobi chip. Defaults to 10.
 
+-N numOutputSolutions
+Optional argument that sets the number of unique solutions to be output.
+If the value provided is 0, all unique solutions will be output.
+
 -p preSearchPassFactor
 Scale the amount of classical tabu search to be performed before decomposing problem to
 sub-problems. Defaults to 0. Standard qbsolv uses 6500.
@@ -45,8 +49,21 @@ Output
 ======
 Delimited output has the format:
 
-input file name, preSearchPassFactor, globalSearchPassFactor, finalEnergy, num sub-qubos solved, pre tabu search time, global tabu search time, time spent on sub-problems, total time, prng seed
+column num                 description
+-------------------------------------------------------------------------------
+1                         input file name
+2                         presearch pass factor
+3                         global search pass factor
+4                         final energy
+5                         number of subqubos solved
+6                         pre-tabu search time
+7                         global tabu search time
+8                         time spent on sub-problems
+9                         total time
+10                        unique solution index (index 0 is the best solution)
+11                        number of times a given unqiue solution was found
+12                        prng seed
 
-Eg:
-$ sudo ./cobisolv -C -d -r 321 -m -p 0 -g 100 -i ./data/bqp500_2.qubo
-./data/bqp500_2.qubo, 0, 100, 128339.0, 180, 0.0000, 1.3778, 26.3343, 27.7797, 321
+Delimited output example:
+$ sudo ./cobisolv -C -d -r 123 -m -p 0 -g 100 -i ./data/bqp500_2.qubo
+./data/bqp500_2.qubo, 0, 100, 128339.0, 180, 0.0000, 1.3778, 26.3343, 27.7797, 0, 32, 123

@@ -209,76 +209,92 @@ void print_opts(int maxNodes, parameters_t *param) {
     fprintf(outFile_, " timeout=%9.1f sec\n", Time_);
 }
 
-//  This routine performs the standard output for qbsolv
-//
-    //  This routine performs the standard output for qbsolv
-//
-void print_output(int maxNodes, int8_t *solution, long numPartCalls, double energy, parameters_t *param)
-{
-    int i;
 
-    // if (numsolOut_ > 0) {
-    //     print_opts(maxNodes, param);
-    // }
-    // numsolOut_++;
-    for (i = 0; i < maxNodes; i++) {
+void print_solution(int maxNodes, int8_t *solution, int solution_count, double energy)
+{
+    for (int i = 0; i < maxNodes; i++) {
         fprintf(outFile_, "%d", solution[i]);
     }
-    fprintf(outFile_, "\n");
-    fprintf(outFile_, "Initial pass factor: %ld\n", param->preSearchPassFactor);
-    fprintf(outFile_, "Global pass factor: %ld\n", param->globalSearchPassFactor);
+
+    fprintf(outFile_, "\nSolution found %d times\n", solution_count);
     fprintf(outFile_, "%8.5f Energy of solution\n", energy);
-    fprintf(outFile_, "%ld Number of Partitioned calls \n", numPartCalls);
-    if (TargetSet_) {
-        fprintf(outFile_, " ,Target of %8.5f\n", Target_);
-    } else {
-        fprintf(outFile_, "\n");
-    }
+    fprintf(outFile_, "\n");
 }
 
-void print_output_with_subprob_time(
-    int maxNodes, int8_t *solution, long numPartCalls, double energy,
-    double totalTime,  double subQuboTime, parameters_t *param
+//  This routine performs the standard output for qbsolv
+//@param  qubo_size length of the solution vectors
+//@param  solution_list[num_solutions][qubo_size] = bit vector solution
+//@param  energy_list 1d array of energies corresponding to solution_list
+//@param  sign provides the sign of values in energy_list
+//@param  index 1d array of indicies into solution_list to provide order of unique solutions from best to worst
+//@param  num_solutions number of solutions to output
+//@param  num_subprobs total number of subproblems extracted from goal problem
+//@param  total_time total elapsed wall time while solving goal problem
+//@param  subprob_time aggregate time spent solving subproblems
+//@param  param solver parameters
+void print_output(
+    int qubo_size, int8_t **solution_list, double *energy_list, int sign, int *solution_counts,
+    int *index, int num_solutions, long num_subprobs,
+    double total_time, double subprob_time, parameters_t *param
 ) {
-    print_output(maxNodes, solution, numPartCalls, energy, param);
-    fprintf(outFile_, "%8.5f seconds solving sub-problems\n", subQuboTime);
-    fprintf(outFile_, "%8.5f seconds of total run time\n", totalTime);
+    int i;
+
+    fprintf(outFile_, "Initial pass factor: %ld\n", param->preSearchPassFactor);
+    fprintf(outFile_, "Global pass factor: %ld\n", param->globalSearchPassFactor);
+    fprintf(outFile_, "%ld Number of Partitioned calls \n", num_subprobs);
+    fprintf(outFile_, "%8.5f seconds solving sub-problems\n", subprob_time);
+    fprintf(outFile_, "%8.5f seconds of total run time\n", total_time);
+    fprintf(outFile_, "\n");
+
+    if (TargetSet_) {
+        fprintf(outFile_, " ,Target of %8.5f\n", Target_);
+    }
+
+    if (num_solutions > 1) {
+        fprintf(outFile_, "Top %d unique solutions:\n", num_solutions);
+        for (int i = 0; i < num_solutions; i++) {
+            int8_t *soln = &solution_list[index[i]][0];
+            double energy = energy_list[index[i]] * sign;
+            int times_found = solution_counts[index[i]];
+
+            print_solution(qubo_size, soln, times_found, energy);
+        }
+        fprintf(outFile_, "\n");
+    } else {
+        int8_t *soln = &solution_list[index[0]][0];
+        double energy = energy_list[index[0]] * sign;
+        int times_found = solution_counts[index[0]];
+        print_solution(qubo_size, soln, times_found, energy);
+    }
 }
 
 //  This routine performs the output in a tabular format.
-//
 void print_delimited_output(
-    int maxNodes, int8_t *solution, long numPartCalls, double energy, double totalTime,
-    double initialTabuTime, double globalTabuTime, double subQuboTime, parameters_t *param
+    double *energy_list, int sign, int *solution_counts, int *index,
+    int num_solutions, long num_subprobs,
+    double total_time, double subprob_time, double initial_tabu_time, double global_tabu_time,
+    parameters_t *param
 ) {
-    // int i;
-    // if (numsolOut_ > 0) {
-    //     print_opts(maxNodes, param);
-    // }
-    // numsolOut_++;
-    // for (i = 0; i < maxNodes; i++) {
-    //     fprintf(outFile_, "%d", solution[i]);
-    // }
-    fprintf(outFile_, "%s, %d, %d, %.1f, %ld, %.4f, %.4f, %.4f, %.4f, %ld\n",
-            param->problemName,
-            param->preSearchPassFactor,
-            param->globalSearchPassFactor,
-            energy,
-            numPartCalls,
+    for (int i = 0; i < num_solutions; i++) {
+        double energy = energy_list[index[i]] * sign;
+        int times_found = solution_counts[index[i]];
 
-            initialTabuTime,
-            globalTabuTime,
-            subQuboTime,
-            totalTime,
+        fprintf(outFile_, "%s, %d, %d, %.1f, %ld, %.4f, %.4f, %.4f, %.4f, %d, %d, %ld\n",
+                param->problemName,
+                param->preSearchPassFactor,
+                param->globalSearchPassFactor,
+                energy,
+                num_subprobs,
 
-            param->seed
-           );
-
-    // if (TargetSet_) {
-    //     fprintf(outFile_, " ,Target of %8.5f\n", Target_);
-    // } else {
-    //     fprintf(outFile_, "\n");
-    // }
+                initial_tabu_time,
+                global_tabu_time,
+                subprob_time,
+                total_time,
+                i,
+                times_found,
+                param->seed
+               );
+    }
 }
 
 int partition(double val[], int arr[], int l, int h) {
@@ -558,8 +574,7 @@ int mul_index_solution_diff(int8_t **solution, int num_solutions, int nbits, int
 //      small to large
 //  ndiff number of differences between solution(s),, returned value
 //
-void print_solutions(int8_t **solution, double *energy_list, int *solutions_counts, int num_solutions, int nbits,
-                     int *index) {
+void print_solutions(int8_t **solution, double *energy_list, int *solutions_counts, int num_solutions, int nbits, int *index) {
     int i, j, k;
     double delta, energy, top_energy;
     fprintf(outFile_, "delta energy  Energy of solution\tnfound\tindex\t i\t");
