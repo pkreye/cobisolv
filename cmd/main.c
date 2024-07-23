@@ -150,8 +150,8 @@ int main(int argc, char *argv[]) {
             case 'i':
                 inFileName = optarg;
 
-                strncpy(param.problemName, inFileName, 25);
-                param.problemName[25] = '\0';
+                strncpy(param.problemName, inFileName, 24);
+                param.problemName[24] = '\0';
 
                 if ((inFile = fopen(inFileName, "r")) == NULL) {
                     fprintf(stderr,
