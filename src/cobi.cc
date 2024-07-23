@@ -900,7 +900,7 @@ int *cobi_test_multi_times(
 
         if (res < cur_best) {
             cur_best = res;
-            for (int i = 0; i < cobi_data->probSize; i++ ) {
+            for (size_t i = 0; i < cobi_data->probSize; i++ ) {
                 solution[i] = cobi_data->spins[i];
             }
         }
