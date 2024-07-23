@@ -19,68 +19,33 @@ extern "C" {
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-// #include <pigpio.h>
-#include <lgpio.h>
 
 int usleep(long usecs);
-
-#define GPIO_READ(pi, pin) lgGpioRead(pi, pin)
-
-#define GPIO_WRITE(pi, pin, val)                                         \
-    if (lgGpioWrite(pi, pin, val) != 0) {                                  \
-        printf("\n ERROR: bad gpio write on %d: %s(%d)\n\n", pin, __FUNCTION__, __LINE__); \
-        exit(9);                                                        \
-    }
-
-#define GPIO_WRITE_DELAY(pi, pin, val, delay)                            \
-    if (lgGpioWrite(pi, pin, val) != 0) {                               \
-        printf("\n ERROR: bad gpio write on %d: %s(%d)\n\n", pin,  __FUNCTION__, __LINE__); \
-        exit(9);                                                        \
-    }                                                                   \
-    usleep(delay);
-
-#define GPIO_OUTPUT_FLAGS 0
-#define GPIO_CLAIM_OUTPUT(pi, pin)                                      \
-    if (lgGpioClaimOutput(pi, GPIO_OUTPUT_FLAGS, pin, 0) != 0) {        \
-        printf("\nERROR: GPIO cannot set output mode on %d: %s(%d)\n\n", pin, __FUNCTION__, __LINE__); \
-        exit(9);                                                        \
-    }
-
-#define GPIO_INPUT_FLAGS 0
-#define GPIO_CLAIM_INPUT(pi, pin)                                       \
-    if (lgGpioClaimInput(pi, GPIO_INPUT_FLAGS, pin) != 0) {             \
-        printf("\nERROR: GPIO cannot set input mode on %d: %s(%d)\n\n", pin, __FUNCTION__, __LINE__); \
-        exit(9);                                                        \
-    }
-
-#define GPIO_HIGH 1
-#define GPIO_LOW  0
 
 typedef struct CobiData {
     size_t probSize;
     size_t w;
     size_t h;
     int **programming_bits;
-    uint8_t *chip_output;
+
+    uint32_t *chip1_output;
+    uint32_t *chip2_output;
+
+    int *chip1_spins;
+    int *chip2_spins;
+
+    uint32_t process_time;
+
     int num_samples;
-    int *spins;
     int64_t chip_delay;
     bool descend;
 
     int sample_test_count;
-    int *prev_spins;
-    /* int **graph_arr; */
-    /* uint8_t *samples; */
 } CobiData;
 
-/* void cobi_from_qubo(double **qubo, size_t, double **cobi); */
-
 bool cobi_established(void);
-
 int cobi_init(void);
-
 void cobi_close(void);
-
 void cobi_solver(double **, int, int8_t *, int, int, bool);
 
 #ifdef __cplusplus

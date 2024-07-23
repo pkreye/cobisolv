@@ -16,12 +16,10 @@
 
 #include "extern.h"  // qubo header file: global variable declarations
 #include "macros.h"
+#include "pci.h"
 
 // #include "extern.h"  // qubo header file: global variable declarations
 // #include "macros.h"
-
-// #include <pigpio.h>
-#include <lgpio.h>
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -35,7 +33,7 @@
 extern "C" {
 #endif
 
-static int chip;
+static int cobi_fd;
 
 void _print_array2d_int(int **a, int w, int h)
 {
@@ -48,116 +46,6 @@ void _print_array2d_int(int **a, int w, int h)
         printf("\n");
     }
 }
-
-
-//
-// #define WEIGHT_2  2
-// #define WEIGHT_3  3
-// #define SCANOUT_CLK  4
-// #define SAMPLE_CLK  17
-// #define ALL_ROW_HI  27
-// #define WEIGHT_1  22
-// #define WEIGHT_EN  10
-// #define COL_ADDR_4  9
-// #define ADDR_EN64_CHIP1  11
-// #define COL_ADDR_3  5
-// #define COL_ADDR_1  6
-// #define COL_ADDR_0  13
-// #define ROW_ADDR_2  19
-// #define ROW_ADDR_3  26
-// #define WEIGHT_5  14
-// #define SCANOUT_DOUT64_CHIP2  15
-// #define SCANOUT_DOUT64_CHIP1  18
-// #define WEIGHT_0  23
-// #define ROSC_EN  24
-// #define COL_ADDR_5  25
-// #define ROW_ADDR_5  8
-// #define ADDR_EN64_CHIP2  7
-// #define WEIGHT_4  1
-// #define COL_ADDR_2  12
-// #define ROW_ADDR_1  16
-// #define ROW_ADDR_0  20
-// #define ROW_ADDR_4  21
-
-#define S_DATA_0  20  // #GPIO.Board(38)
-#define S_DATA_1  16  // #GPIO.Board(36)
-#define S_DATA_2  19  // #GPIO.Board(35)
-#define S_DATA_3  26  // #GPIO.Board(37)
-#define S_DATA_4  21  // #GPIO.Board(40)
-#define S_DATA_5   8  // #GPIO.Board(24)
-#define S_DATA_6  11  // #GPIO.Board(23)
-#define S_DATA_7   7  // #GPIO.Board(26)
-#define S_DATA_8  13  // #GPIO.Board(33)
-#define S_DATA_9   6  // #GPIO.Board(31)
-#define S_DATA_10 12  // #GPIO.Board(32)
-#define S_DATA_11  5  // #GPIO.Board(29)
-#define S_DATA_12  9  // #GPIO.Board(21)
-#define S_DATA_13 25  // #GPIO.Board(22)
-#define S_DATA_14 10  // #GPIO.Board(19)
-#define S_DATA_15 24  // #GPIO.Board(18)
-
-#define S_LAST    1  // #GPIO.Board(28)
-#define S_VALID  22  // #GPIO.Board(15)
-#define S_READY   4  // #RPI input; GPIO.Board(7)
-#define M_LAST    3  // #RPI input; GPIO.Board(5)
-#define M_VALID   2  // #RPI input; GPIO.Board(3)
-#define M_READY  17  // #GPIO.Board(11)
-#define M_DATA   14  // #RPI input; GPIO.Board(8)
-#define CLK      27  // #GPIO.Board(13)
-#define RESETB   23  // #GPIO.Board(16)
-
-#define S_DATA_LEN 16
-int S_DATA[S_DATA_LEN] = {
-    S_DATA_0 ,
-    S_DATA_1 ,
-    S_DATA_2 ,
-    S_DATA_3 ,
-    S_DATA_4 ,
-    S_DATA_5 ,
-    S_DATA_6 ,
-    S_DATA_7 ,
-    S_DATA_8 ,
-    S_DATA_9 ,
-    S_DATA_10,
-    S_DATA_11,
-    S_DATA_12,
-    S_DATA_13,
-    S_DATA_14,
-    S_DATA_15
-};
-
-#define OUTPUT_PIN_COUNT 21
-int OUTPUT_PINS[OUTPUT_PIN_COUNT] = {
-    S_DATA_0,
-    S_DATA_1,
-    S_DATA_2,
-    S_DATA_3,
-    S_DATA_4,
-    S_DATA_5,
-    S_DATA_6,
-    S_DATA_7,
-    S_DATA_8,
-    S_DATA_9,
-    S_DATA_10,
-    S_DATA_11,
-    S_DATA_12,
-    S_DATA_13,
-    S_DATA_14,
-    S_DATA_15,
-    S_LAST,
-    S_VALID,
-    M_READY,
-    CLK,
-    RESETB
-};
-
-#define INPUT_PIN_COUNT 4
-int INPUT_PINS[INPUT_PIN_COUNT] = {
-    S_READY,
-    M_LAST,
-    M_VALID,
-    M_DATA
-};
 
 #define COBI_CONTROL_BYTES_LEN 52
 uint8_t default_control_bytes[COBI_CONTROL_BYTES_LEN] = {
@@ -466,13 +354,15 @@ CobiData *cobi_data_mk(size_t num_spins, int chip_delay, bool descend)
     d->w = 52;
     d->h = 52;
     d->programming_bits = _malloc_array2d(d->w, d->h);
-    d->chip_output = (uint8_t*)malloc(sizeof(uint8_t) * CHIP_OUTPUT_SIZE);
+    d->chip1_output = (uint8_t*)malloc(sizeof(uint8_t) * CHIP_OUTPUT_SIZE);
+    d->chip1_spins = _malloc_array1d(num_spins);
+
+    // TODO: support chip 2
+    // d->chip2_output = (uint8_t*)malloc(sizeof(uint8_t) * CHIP_OUTPUT_SIZE);
+    // d->chip2_spins = _malloc_array1d(num_spins);
 
     d->num_samples = 1;
-    d->spins = _malloc_array1d(num_spins);
-
     d->chip_delay = chip_delay;
-
     d->descend = descend;
 
     return d;
@@ -486,71 +376,38 @@ void free_cobi_data(CobiData *d)
     free(d);
 }
 
-int cobi_gpio_setup()
-{
-    GPIO_CLAIM_OUTPUT(chip, S_DATA_0);
-    GPIO_CLAIM_OUTPUT(chip, S_DATA_1);
-    GPIO_CLAIM_OUTPUT(chip, S_DATA_2);
-    GPIO_CLAIM_OUTPUT(chip, S_DATA_3);
-    GPIO_CLAIM_OUTPUT(chip, S_DATA_4);
-    GPIO_CLAIM_OUTPUT(chip, S_DATA_5);
-    GPIO_CLAIM_OUTPUT(chip, S_DATA_6);
-    GPIO_CLAIM_OUTPUT(chip, S_DATA_7);
-    GPIO_CLAIM_OUTPUT(chip, S_DATA_8);
-    GPIO_CLAIM_OUTPUT(chip, S_DATA_9);
-    GPIO_CLAIM_OUTPUT(chip, S_DATA_10);
-    GPIO_CLAIM_OUTPUT(chip, S_DATA_11);
-    GPIO_CLAIM_OUTPUT(chip, S_DATA_12);
-    GPIO_CLAIM_OUTPUT(chip, S_DATA_13);
-    GPIO_CLAIM_OUTPUT(chip, S_DATA_14);
-    GPIO_CLAIM_OUTPUT(chip, S_DATA_15);
-    GPIO_CLAIM_OUTPUT(chip, S_LAST);
-    GPIO_CLAIM_OUTPUT(chip, S_VALID);
-    GPIO_CLAIM_OUTPUT(chip, M_READY);
-    GPIO_CLAIM_OUTPUT(chip, CLK);
-    GPIO_CLAIM_OUTPUT(chip, RESETB);
-
-    GPIO_CLAIM_INPUT(chip, S_READY);
-    GPIO_CLAIM_INPUT(chip, M_LAST);
-    GPIO_CLAIM_INPUT(chip, M_VALID);
-    GPIO_CLAIM_INPUT(chip, M_DATA);
-
-    GPIO_WRITE(chip, CLK, GPIO_LOW);
-
-    return 0;
-}
-
 void cobi_reset()
 {
-    // #reset startup
-    GPIO_WRITE(chip, RESETB, GPIO_HIGH);
-    GPIO_WRITE(chip, M_READY, GPIO_LOW);
+    // TODO how to reset via pci driver?
+    // // #reset startup
+    // GPIO_WRITE(chip, RESETB, GPIO_HIGH);
+    // GPIO_WRITE(chip, M_READY, GPIO_LOW);
 
-    for (int i = 0; i < 16; i ++) {
-        GPIO_WRITE(chip, S_DATA[i], GPIO_LOW);
-    }
+    // for (int i = 0; i < 16; i ++) {
+    //     GPIO_WRITE(chip, S_DATA[i], GPIO_LOW);
+    // }
 
-    GPIO_WRITE(chip, S_LAST, GPIO_LOW);
+    // GPIO_WRITE(chip, S_LAST, GPIO_LOW);
 
-    // #reset
-    GPIO_WRITE(chip, CLK, GPIO_HIGH);
-    GPIO_WRITE(chip, RESETB, GPIO_LOW);
-    GPIO_WRITE(chip, CLK, GPIO_LOW);
-    usleep(1000);
+    // // #reset
+    // GPIO_WRITE(chip, CLK, GPIO_HIGH);
+    // GPIO_WRITE(chip, RESETB, GPIO_LOW);
+    // GPIO_WRITE(chip, CLK, GPIO_LOW);
+    // usleep(1000);
 
-    GPIO_WRITE(chip, CLK, GPIO_HIGH);
-    usleep(1000);
-    GPIO_WRITE(chip, RESETB, GPIO_HIGH);
-    GPIO_WRITE(chip, CLK, GPIO_LOW);
+    // GPIO_WRITE(chip, CLK, GPIO_HIGH);
+    // usleep(1000);
+    // GPIO_WRITE(chip, RESETB, GPIO_HIGH);
+    // GPIO_WRITE(chip, CLK, GPIO_LOW);
 
-    usleep(1000);
-    GPIO_WRITE(chip, CLK, GPIO_HIGH);
-    usleep(100);
-    GPIO_WRITE(chip, CLK, GPIO_LOW);
-    usleep(100);
-    GPIO_WRITE(chip, CLK, GPIO_HIGH);
-    usleep(100);
-    GPIO_WRITE(chip, CLK, GPIO_LOW);
+    // usleep(1000);
+    // GPIO_WRITE(chip, CLK, GPIO_HIGH);
+    // usleep(100);
+    // GPIO_WRITE(chip, CLK, GPIO_LOW);
+    // usleep(100);
+    // GPIO_WRITE(chip, CLK, GPIO_HIGH);
+    // usleep(100);
+    // GPIO_WRITE(chip, CLK, GPIO_LOW);
 }
 
 uint8_t hex_mapping(int val)
@@ -662,53 +519,85 @@ void cobi_prepare_weights(
 
 void cobi_program_weights(int **program_array)
 {
+    pci_write_data write_data;
+
     if (Verbose_ > 0) {
         printf("Programming chip\n");
     }
 
-    GPIO_WRITE(chip, M_READY, GPIO_LOW);
-    GPIO_WRITE(chip, S_VALID, GPIO_HIGH);
-
-    for (int i = 0; i < 52; i++) {
-        for (int j = 12; j >= 0; j--) {
-
-            uint8_t bits[16];
-
-            for (int k = 0; k < 4; k++) {
-                int v = program_array[i][j * 4 + k]; // current 4 bits
-
-                int bit_index = 12 - 4*k;
-
-                bits[bit_index + 3] = (v & 0x8) >> 3;
-                bits[bit_index + 2] = (v & 0x4) >> 2;
-                bits[bit_index + 1] = (v & 0x2) >> 1;
-                bits[bit_index]     = v &  0x1;
-            }
-
-            for (int k = 0; k < 16; k++) {
-                GPIO_WRITE(chip, S_DATA[k], bits[k]);
-            }
-
-            // # once all bits are assigned to s_data_#,
-            // # indicate this is the last data set before clk's rising edge
-            if (i == 51 && j == 0) {
-                GPIO_WRITE(chip, S_LAST, GPIO_HIGH);
-            }
-
-            GPIO_WRITE(chip, CLK, GPIO_HIGH);
-            GPIO_WRITE(chip, CLK, GPIO_LOW);
-        }
+    // Perform write operations
+    for (i = 0; i < RAW_BYTE_CNT; ++i) {
+        write_data.offset = 9 * sizeof(uint32_t);
+        write_data.value = rawData[i];
+        write_data.value = ((write_data.value & 0xFFFF0000) >> 16) |
+            ((write_data.value & 0x0000FFFF) << 16);
+        if (write(cobi_fd, &write_data, sizeof(write_data)) != sizeof(write_data)) {
+            perror("Failed to write to device");
+            exit(2)
+                }
     }
 
-    GPIO_WRITE(chip, S_LAST, GPIO_LOW);
-    GPIO_WRITE(chip, S_VALID, GPIO_LOW); // #s_valid low for 2 clk cycles
+    // fsm control for cobi axi interface
+    write_data.offset = 8 * sizeof(uint32_t);
+    write_data.value = 0x0000000F;
 
-    GPIO_WRITE_DELAY(chip, CLK, GPIO_HIGH, 100);
-    GPIO_WRITE_DELAY(chip, CLK, GPIO_LOW, 100);
-    GPIO_WRITE_DELAY(chip, CLK, GPIO_HIGH, 100);
-    GPIO_WRITE(chip, CLK, GPIO_LOW);
+    if (write(cobi_fd, &write_data, sizeof(write_data)) != sizeof(write_data)) {
+        perror("Failed to write to device");
+        exit(2);
+    }
 
-    GPIO_WRITE(chip, S_VALID, GPIO_LOW);
+    write_data.offset = 8 * sizeof(uint32_t);
+    write_data.value = 0x0000000D;
+
+    if (write(cobi_fd, &write_data, sizeof(write_data)) != sizeof(write_data)) {
+        perror("Failed to write to device");
+        exit(2);
+    }
+
+
+    // GPIO_WRITE(chip, M_READY, GPIO_LOW);
+    // GPIO_WRITE(chip, S_VALID, GPIO_HIGH);
+
+    // for (int i = 0; i < 52; i++) {
+    //     for (int j = 12; j >= 0; j--) {
+
+    //         uint8_t bits[16];
+
+    //         for (int k = 0; k < 4; k++) {
+    //             int v = program_array[i][j * 4 + k]; // current 4 bits
+
+    //             int bit_index = 12 - 4*k;
+
+    //             bits[bit_index + 3] = (v & 0x8) >> 3;
+    //             bits[bit_index + 2] = (v & 0x4) >> 2;
+    //             bits[bit_index + 1] = (v & 0x2) >> 1;
+    //             bits[bit_index]     = v &  0x1;
+    //         }
+
+    //         for (int k = 0; k < 16; k++) {
+    //             GPIO_WRITE(chip, S_DATA[k], bits[k]);
+    //         }
+
+    //         // # once all bits are assigned to s_data_#,
+    //         // # indicate this is the last data set before clk's rising edge
+    //         if (i == 51 && j == 0) {
+    //             GPIO_WRITE(chip, S_LAST, GPIO_HIGH);
+    //         }
+
+    //         GPIO_WRITE(chip, CLK, GPIO_HIGH);
+    //         GPIO_WRITE(chip, CLK, GPIO_LOW);
+    //     }
+    // }
+
+    // GPIO_WRITE(chip, S_LAST, GPIO_LOW);
+    // GPIO_WRITE(chip, S_VALID, GPIO_LOW); // #s_valid low for 2 clk cycles
+
+    // GPIO_WRITE_DELAY(chip, CLK, GPIO_HIGH, 100);
+    // GPIO_WRITE_DELAY(chip, CLK, GPIO_LOW, 100);
+    // GPIO_WRITE_DELAY(chip, CLK, GPIO_HIGH, 100);
+    // GPIO_WRITE(chip, CLK, GPIO_LOW);
+
+    // GPIO_WRITE(chip, S_VALID, GPIO_LOW);
 
     if (Verbose_ > 0) {
         printf("Programming completed\n");
@@ -722,60 +611,122 @@ void cobi_program_weights(int **program_array)
  */
 void cobi_read_spins(CobiData *cobi_data)
 {
-
     for (int i = 0; i < 46; i++) {
-        if (cobi_data->chip_output[i + 4] == 0) {
-            cobi_data->spins[i] = 1;
+        if (cobi_data->chip1_output[i + 4] == 0) {
+            cobi_data->chip1_spins[i] = 1;
         } else {
-            cobi_data->spins[i] = -1;
+            cobi_data->chip1_spins[i] = -1;
         }
         // printf("%d: %d\n", i, spins[i]);
     }
 }
 
-void cobi_read(uint8_t *output)
+void cobi_read(CobiData *cobi_data)
 {
-    GPIO_WRITE(chip, M_READY, GPIO_HIGH);
+    uint32_t read_data;
+    off_t read_offset;
 
-    GPIO_WRITE(chip, CLK, GPIO_HIGH);
-    GPIO_WRITE(chip, CLK, GPIO_LOW);
+    while(1) {
+        read_offset = 10 * sizeof(uint32_t); // Example read offset
 
-    int bit_count = 0;
-    output[bit_count] = GPIO_READ(chip, M_DATA);
-    int m_last = GPIO_READ(chip, M_LAST);
-    int m_valid = GPIO_READ(chip, M_VALID);
-    /* printf("m_last: %d, m_valid: %d ", m_last, m_valid); */
-    while(m_last == GPIO_LOW && m_valid == GPIO_HIGH) {
-        bit_count++;
-        GPIO_WRITE(chip, CLK, GPIO_HIGH);
-        output[bit_count] = GPIO_READ(chip, M_DATA);
-        GPIO_WRITE(chip, CLK, GPIO_LOW);
-
-        if (bit_count > 431) {
-            printf("Data Read Error: %d\n", bit_count);
+        // Write read offset to device
+        if (write(fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+            perror("Failed to set read offset in device");
             exit(2);
         }
 
-        m_last = GPIO_READ(chip, M_LAST);
-        m_valid = GPIO_READ(chip, M_VALID);
-        /* printf("m_last: %d, m_valid: %d ", m_last, m_valid); */
+        // Read data from device
+        if (read(fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
+            perror("Failed to read from device");
+            exit(2);
+        }
+
+        if(read_data == 0x0){
+            break;
+        }
     }
 
-    GPIO_WRITE(chip, CLK, GPIO_HIGH);
-    GPIO_WRITE(chip, CLK, GPIO_LOW);
-}
+    // Read from chip 1
 
-int cobi_read_ham(CobiData *cobi_data)
-{
-        int tmp = cobi_data->chip_output[65];
-        for (int i = 64; i >= 50; i--) {
-            tmp = (tmp << 1) + cobi_data->chip_output[i];
+    for (i = 0; i < READ_COUNT_COBI_CHIP_1; ++i) {
+        read_offset = (4 + i) * sizeof(uint32_t);
+
+        // Write read offset to device
+        if (write(fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+            perror("Failed to set read offset in device");
+            exit(2);
         }
-        int s = 1 << 15;
-        int ham_energy = (tmp & (s - 1)) - (tmp & s);
 
-        return ham_energy;
+        // Read data from device
+        if (read(fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
+            perror("Failed to read from device");
+            exit(2);
+        }
+
+        cobi_data->chip1_output[i] = read_data;
+
+        if (Verbose_ > 2) {
+            printf("Read data from cobi chip A at offset %ld: 0x%x\n", read_offset, read_data);
+        }
+    }
+
+    // Read from chip 2
+
+    for (i = 0; i < READ_COUNT_COBI_CHIP_2; ++i) {
+        // TODO verify read_offset calculations and consolidate with chip1 read loop
+
+        read_offset = (13 + i) * sizeof(uint32_t);
+
+        // Write read offset to device
+        if (write(fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+            perror("Failed to set read offset in device");
+            exit(2);
+        }
+
+        // Read data from device
+        if (read(fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
+            perror("Failed to read from device");
+            exit(2);
+        }
+
+        cobi_data->chip2_output[i] = read_data;
+
+        if (Verbose_ > 2) {
+            printf("Read data from cobi chip B at offset %ld: 0x%x\n", read_offset, read_data);
+        }
+    }
+
+    // Get process time
+
+    read_offset = 48 * sizeof(uint32_t); // Example read offset
+
+    if (write(fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+        perror("Failed to set read offset in device");
+        exit(2);
+    }
+
+    if (read(fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
+        perror("Failed to read from device");
+        exit(2)
+    }
+
+    cobi_data->process_time = read_data;
+
+    if (Verbose_ > 2) {
+        printf("Process time: 0x%x\n", read_data);
+    }
 }
+
+// int cobi_read_ham(CobiData *cobi_data)
+// {
+//         int tmp = cobi_data->chip1_output[65];
+//         for (int i = 64; i >= 50; i--) {
+//             tmp = (tmp << 1) + cobi_data->chip1_output[i];
+//         }
+//         int s = 1 << 15;
+//         int ham_energy = (tmp & (s - 1)) - (tmp & s);
+//         return ham_energy;
+// }
 
 void cobi_modify_array_for_pins(int **initial_array, int  **final_pin_array, int problem_size)
 {
@@ -871,22 +822,22 @@ int *cobi_test_multi_times(
     while (times < sample_times) {
         cobi_reset();
 
-        while(GPIO_READ(chip, S_READY) != 1) {
-            GPIO_WRITE(chip, CLK, GPIO_HIGH);
-            GPIO_WRITE(chip, CLK, GPIO_LOW);
-        }
+        // Decide when to start programming. Is this relevent with pci? probably no.
+        // while(GPIO_READ(chip, S_READY) != 1) {
+        //     GPIO_WRITE(chip, CLK, GPIO_HIGH);
+        //     GPIO_WRITE(chip, CLK, GPIO_LOW);
+        // }
 
         cobi_program_weights(cobi_data->programming_bits);
 
         memset(cobi_data->chip_output, 0, sizeof(uint8_t) * CHIP_OUTPUT_SIZE);
 
-        while(GPIO_READ(chip, M_VALID) != 1) {
-            GPIO_WRITE(chip, CLK, GPIO_HIGH);
-            GPIO_WRITE(chip, CLK, GPIO_LOW);
-        }
+        // while(GPIO_READ(chip, M_VALID) != 1) {
+        //     GPIO_WRITE(chip, CLK, GPIO_HIGH);
+        //     GPIO_WRITE(chip, CLK, GPIO_LOW);
+        // }
 
         cobi_read(cobi_data->chip_output);
-
 
         if (Verbose_ > 2) {
             printf("\nSample number %d\n", times);
@@ -1002,31 +953,46 @@ void ising_from_qubo(double **ising, double **qubo, int size)
     }
 }
 
-int cobi_init()
+int cobi_init(const char* device_file)
 {
-    chip = lgGpiochipOpen(4); // "/dev/gpiochip4"
-    if(chip < 0)
-    {
-        printf("ERROR: lgGpiochipOpen failed: %d\n", chip);
-        exit(1);
+    chip = open(device_file, O_RDWR); // O_RDWR to allow both reading and writing
+    if (fd < 0) {
+        perror("Failed to open device file");
+        return;
     }
 
-    // setup GPIO pins
-    cobi_gpio_setup();
+    write_data.offset = 8 * sizeof(uint32_t);
+    write_data.value = 0x00000000;    // initialize axi interface control
+    if (Verbose_ > 0) {
+        printf("Initialize cobi chips interface controller\n");
+    }
 
-    if(Verbose_ > 0) printf("GPIO initialized successfully\n");
+    if (write(fd, &write_data, sizeof(write_data)) != sizeof(write_data)) {
+        perror("Failed to write to device");
+        close(fd);
+        return;
+    }
+
+    if(Verbose_ > 0) {
+        printf("Cobi chip initialized successfully\n");
+    }
 
     return chip;
 }
 
 bool cobi_established()
 {
-    // TODO How to verify existence of cobi chip?
-    // connection = getenv("DW_INTERNAL__CONNECTION");
-    // if (connection == NULL) {
-    return true;
-    // }
-    // return true;
+    const char device_file[] = "/dev/cobi_pcie_card1";
+    // TODO handle multiple cards
+
+    if (access(device_file, F_OK) == 0) {
+        if (Verbose_ > 0) printf("Accessing device file: %s\n", device_file);
+        return true;
+    } else {
+        fprintf(stderr, "No device found at %s\n", device_file);
+        exit(1);
+        return false;
+    }
 }
 
 void cobi_solver(
@@ -1065,13 +1031,14 @@ void cobi_solver(
     _free_array2d((void**)norm_ising, numSpins);
 }
 
+// cobi_close should be registered by main to run via `atexit`
 void cobi_close()
 {
     if (Verbose_ > 0) {
-        printf("lgpio clean up\n");
+        printf("cobi chip clean up\n");
     }
 
-    lgGpiochipClose(chip);
+    close(chip);
 }
 
 #ifdef __cplusplus
