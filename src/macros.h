@@ -23,7 +23,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include "stdheaders_shim.h"
-#define VERSION "cobisolv 0.1.1"
+#define VERSION "cobisolv 0.1.1-dualres"
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
