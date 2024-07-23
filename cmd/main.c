@@ -381,7 +381,7 @@ void print_help(void) {
            "\t-z numSamples \n"
            "\t\tOptional argument that sets the number of solutions to\n"
            "\t\tsample from the cobi chip for each subproblem. Defaults to 10.\n"
-           "\t-N numOutputSolutions"
+           "\t-N numOutputSolutions\n"
            "\t\tOptional argument that sets the number of unique solutions to be output.\n"
            "\t\tIf the value provided is 0, all unique solutions will be output.\n"
            "\t-p preSearchPassFactor\n"
