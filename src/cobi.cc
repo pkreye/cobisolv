@@ -423,6 +423,32 @@ void cobi_prepare_weights(
     }
 }
 
+void cobi_wait_while_busy()
+{
+    uint32_t read_data;
+    off_t read_offset;
+
+    while(1) {
+        read_offset = 10 * sizeof(uint32_t); // Example read offset
+
+        // Write read offset to device
+        if (write(cobi_fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+            perror("Failed to set read offset in device");
+            exit(2);
+        }
+
+        // Read data from device
+        if (read(cobi_fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
+            perror("Failed to read from device");
+            exit(2);
+        }
+
+        if(read_data == 0x0){
+            break;
+        }
+    }
+}
+
 #define RAW_BYTE_COUNT 338
 void cobi_write_program(uint32_t *program, int num_words)
 {
@@ -436,6 +462,8 @@ void cobi_write_program(uint32_t *program, int num_words)
     if (Verbose_ > 0) {
         printf("Programming chip\n");
     }
+
+    cobi_wait_while_busy();
 
     /* /\* Perform write operations *\/ */
     for (int i = 0; i < RAW_BYTE_COUNT; ++i) {
@@ -465,7 +493,7 @@ int bits_to_signed_int(bool *bits, int num_bits)
 
     int n = 0;
     for (int i = 0; i < num_bits; i++) {
-        n |= bits[i] << num_bits - 1 - i;
+        n |= bits[i] << (num_bits - 1 - i);
     }
 
     unsigned int sign_bit = 1 << (num_bits - 1);
@@ -483,30 +511,12 @@ void cobi_read(CobiData *cobi_data, bool use_polling)
     int num_read_bits = 32;
 
     if (use_polling) {
-        while(1) {
-            read_offset = 10 * sizeof(uint32_t); // Example read offset
-
-            // Write read offset to device
-            if (write(cobi_fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
-                perror("Failed to set read offset in device");
-                exit(2);
-            }
-
-            // Read data from device
-            if (read(cobi_fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
-                perror("Failed to read from device");
-                exit(2);
-            }
-
-            if(read_data == 0x0){
-                break;
-            }
-        }
+        cobi_wait_while_busy();
     } else {
         usleep(350);
     }
 
-        // Read from chip 1
+    // Read from chip 1
     for (int i = 0; i < 3; ++i) {
         read_offset = (4 + i) * sizeof(uint32_t);
 
@@ -596,10 +606,10 @@ void cobi_read(CobiData *cobi_data, bool use_polling)
 
     // Parse program id
     for (int i = 0; i < 12; i++) {
-            cobi_data->chip1_program_id =
-                (cobi_data->chip1_program_id << 1) | cobi_data->chip1_output[i];
-            cobi_data->chip2_program_id =
-                (cobi_data->chip2_program_id << 1) | cobi_data->chip2_output[i];
+        cobi_data->chip1_program_id =
+            (cobi_data->chip1_program_id << 1) | cobi_data->chip1_output[i];
+        cobi_data->chip2_program_id =
+            (cobi_data->chip2_program_id << 1) | cobi_data->chip2_output[i];
     }
 
     // Parse energy
