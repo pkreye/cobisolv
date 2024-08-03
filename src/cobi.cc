@@ -12,11 +12,12 @@
  limitations under the License.
 */
 
-#include "cobi.h"
-
 #include "extern.h"  // qubo header file: global variable declarations
 #include "macros.h"
 #include "pci.h"
+#include "util.h"
+#include "cobi.h"
+
 
 // #include "extern.h"  // qubo header file: global variable declarations
 // #include "macros.h"
@@ -27,13 +28,107 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <fcntl.h>
+#include <unistd.h>
+
 #include <time.h>
+#include <omp.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+// TESTING: To be removed
+static double write_cum_time = 0;
+static double read_cum_time = 0;
+static int subprob_zero_count = 0;
+
+void __cobi_print_write_time()
+{
+    printf("cumulative program write time: %f\n", write_cum_time);
+}
+void __cobi_print_read_time()
+{
+    printf("cumulative program read time: %f\n", read_cum_time);
+}
+void __cobi_print_subprob_zero_count()
+{
+    printf("Subprob zero count: %d\n", subprob_zero_count);
+}
+
+// END TESTING
+
+#define COBI_SHIL_ROW 26
+#define COBI_CHIP_OUTPUT_LEN 78
+#define COBI_CONTROL_NIBBLES_LEN 52
+
 static int cobi_fd;
+
+uint8_t default_control_nibbles[COBI_CONTROL_NIBBLES_LEN] = {
+    0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA,
+    0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA,
+    0, 0, 0xF, 0xF,     // pid
+    0, 0, 0, 0x5,     // dco_data
+    0, 0, 0xF, 0xF, // sample_delay
+    0, 0, 0x1, 0xF,   //  max_fails
+    0, 0, 0, 0x3,     // rosc_time
+    0, 0, 0, 0xF,   // shil_time
+    0, 0, 0, 0x3,     // weight_time
+    0, 0, 0xF, 0xD  // sample_time
+};
+
+void uint16_to_nibbles(uint16_t val, uint8_t *nibs)
+{
+    nibs[0] = (val & 0xF000) >> 12;
+    nibs[1] = (val & 0x0F00) >> 8;
+    nibs[2] = (val & 0x00F0) >> 4;
+    nibs[3] = (val & 0x000F);
+}
+
+uint8_t *mk_control_nibbles(
+    uint16_t pid,
+    uint16_t dco,
+    uint16_t sample_delay,
+    uint16_t max_fails,
+    uint16_t rosc_time,
+    uint16_t shil_time,
+    uint16_t weight_time,
+    uint16_t sample_time
+) {
+    uint8_t *data = (uint8_t *)malloc(sizeof(uint8_t) * COBI_CONTROL_NIBBLES_LEN);
+    int index = 0;
+    for (index = 0; index < 20; index++) {
+        data[index] = 0xA;
+    }
+
+    uint16_to_nibbles(pid, &data[index]);
+    index += 4;
+
+    uint16_to_nibbles(dco, &data[index]);
+    index += 4;
+
+    uint16_to_nibbles(sample_delay, &data[index]);
+    index += 4;
+
+    uint16_to_nibbles(max_fails, &data[index]);
+    index += 4;
+
+    uint16_to_nibbles(rosc_time, &data[index]);
+    index += 4;
+
+    uint16_to_nibbles(shil_time, &data[index]);
+    index += 4;
+
+    uint16_to_nibbles(weight_time, &data[index]);
+    index += 4;
+
+    uint16_to_nibbles(sample_time, &data[index]);
+    index += 4;
+
+    return data;
+}
+
+// Misc utility functions
 
 void _print_array2d_int(int **a, int w, int h)
 {
@@ -45,100 +140,6 @@ void _print_array2d_int(int **a, int w, int h)
         }
         printf("\n");
     }
-}
-
-#define COBI_CONTROL_BYTES_LEN 52
-uint8_t default_control_bytes[COBI_CONTROL_BYTES_LEN] = {
-    0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA,
-    0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA,
-    0x4, 0xF, 0xF, 0xF, // pid
-    0, 0, 0, 5,  // dco_data
-    0, 0, 0xF, 0xF, // sample_delay
-    0, 0, 1, 0xF,     //  max_fails
-    0, 0, 0, 3,    // rosc_time
-    0, 0, 0, 0xF,    // shil_time
-    0, 0, 0, 3,    // weight_time
-    0, 0, 0xF, 0xD    // sample_time
-};
-
-const int BLANK_GRAPH[64][64] = {
-    {0,0,4,3,3,3,3,0,5,7,5,0,4,7,7,3,3,7,2,5,2,7,2,3,7,3,0,7,3,4,5,3,0,0,3,3,3,7,7,3,7,5,5,5,3,2,1,2,4,5,2,4,2,2,4,5,7,3,3,0,3,1,7,0},
-    {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7},
-    {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,3},
-    {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,3},
-    {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,4},
-    {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,3},
-    {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,5},
-    {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,7},
-    {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,4},
-    {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,4},
-    {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,3},
-    {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,3},
-    {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,2},
-    {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,3},
-    {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,5},
-    {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5},
-    {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2},
-    {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5},
-    {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-    {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5},
-    {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-    {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-    {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-    {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-    {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6},
-    {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-    {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-    {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
-    {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0},
-    {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-    {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-    {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5},
-    {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-    {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-    {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-    {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-    {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-    {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-    {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-    {0,4,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-    {0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-    {0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-    {0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-    {0,7,0,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-    {0,7,0,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-    {0,2,0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-    {0,1,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6},
-    {0,0,0,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-    {0,7,0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7},
-    {0,2,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-    {0,0,0,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6},
-    {0,2,0,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-    {0,1,0,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2},
-    {0,4,0,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-    {0,2,0,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3},
-    {0,4,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4},
-    {0,0,4,4,4,2,4,7,4,7,7,6,3,7,7,4,4,7,4,4,1,7,7,7,7,4,2,7,3,5,4,3,1,1,2,4,7,7,7,3,7,5,4,5,3,7,7,2,5,5,1,3,3,3,3,4,7,5,3,4,3,4,7,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
-};
-
-// Misc utility functions
-
-int usleep(long usecs)
-{
-   struct timespec rem;
-   struct timespec req= {
-       (int)(usecs / 1000000),
-       (usecs % 1000000) * 1000
-   };
-
-   return nanosleep(&req , &rem);
 }
 
 int *_malloc_array1d(int len)
@@ -203,150 +204,48 @@ void _free_array2d(void **a, int w) {
     free(a);
 }
 
-void binary_splice_rev(int num, int *bin_list)
-{
-    // given num place lower 6 bits, in reverse order, into bin_list
-    int i;
-    int shift = 0;
-    for (i = 0; i < 6; i++) {
-        bin_list[i] = (num >> shift) & 1;
-        shift++;
-    }
-}
-
-/* _outer_prod
-
-   Assumes `result` has dimensions (`len_a`, `len_b`).
- */
-void _outer_prod(int *a, size_t len_a, int *b, size_t len_b, int **result)
-{
-    size_t i, j;
-
-    for (i = 0; i < len_a; i++) {
-        for (j = 0; j < len_b; j++) {
-            result[i][j] = a[i] * b[j];
-        }
-    }
-}
-
-void _scalar_mult(int *a, size_t len, int scalar)
-{
-    size_t i;
-    for (i = 0; i < len; i++) {
-        a[i] = a[i] * scalar;
-    }
-}
-
-/* _transpose
-
-   Returns newly allocated 2d array containing the result.
- */
-int **_transpose(int **a, int w, int h)
-{
-    int **result = _malloc_array2d(h, w);
-
-    int i, j;
-    for (i = 0; i < w; i++) {
-        for (j = 0; j < h; j++) {
-            result[j][i] = a[i][j];
-        }
-    }
-
-    return result;
-}
-
-/* Element-wise addition of 2 2D arrays. Result stored in first array. */
-void _add_array2d(int **a, int **b, int w, int h)
-{
-    int i, j;
-    for (i = 0; i < w; i++) {
-        for (j = 0; j < h; j++) {
-            a[i][j] += b[i][j];
-        }
-    }
-}
-
-int **_matrix_mult(int **a, int a_w, int a_h, int **b, int b_h)
-{
-    // b is assumed to have dimensions (a_h, b_h)
-    // int b_w = a_h;
-
-    int **result = _malloc_array2d(a_w, b_h);
-
-    int i, j, k;
-    for(i = 0; i < a_w; i++) { // each row of a
-        for(j = 0; j < b_h; j++) { // each col in b
-            result[i][j] = 0;
-            for(k = 0; k < a_h; k++) { // each col a
-                result[i][j] += a[i][k] * b[k][j];
-            }
-        }
-    }
-
-    return result;
-}
-
-// Elementwise multiplication of 2D arrays
-int **_array2d_element_mult(int **a, int **b, int w, int h)
-{
-    int **result = _malloc_array2d(w, h);
-
-    int i, j;
-    for (i = 0; i < w; i++) {
-        for (j = 0; j < h; j++) {
-            result[i][j] = a[i][j] * b[i][j];
-        }
-    }
-
-    return result;
-}
-
-// void cobi_simple_descent(int *spins, int **weights)
+// void binary_splice_rev(int num, int *bin_list)
 // {
-//     // Assumption: NUM_GROUPS == len(weights) == len(weights[i]) == len(spins)
-//     int size = NUM_GROUPS;
-
-//     int neg_spins[NUM_GROUPS];
-//     for (int i = 0; i < size; i++) {
-//         // _scalar_mult(neg_spins, size, -1);
-//         neg_spins[i] = spins[i] * -1;
-//     }
-
-//     int **cross = _malloc_array2d(size, size);
-//     // int cross[NUM_GROUPS][NUM_GROUPS]
-//     _outer_prod(spins, size, neg_spins, size, cross);
-
-//     // # prod = cross * (weights+weights.transpose())
-//     int **wt_transpose = _transpose(weights, size, size);
-//     // add weights to wt_transpose, storing result in wt_transpose
-//     _add_array2d(wt_transpose, weights, size, size);
-//     int **prod = _array2d_element_mult(cross, wt_transpose, size, size);
-
-//     // # diffs = np.sum(prod,0)
-//     int diffs[NUM_GROUPS];
-//     // Column-wise sum
-//     for (int i = 0; i < size; i++) {
-//         diffs[i] = 0;
-//         for (int j = 0; j < size; j++) {
-//             diffs[i] += prod[j][i];
-//         }
-//     }
-//     // TODO fix recursive structure...
-//     _free_array2d((void**)cross, size);
-//     _free_array2d((void**)wt_transpose, size);
-//     _free_array2d((void**)prod, size);
-
-//     for (int i = 0; i < size; i++) {
-//         if (diffs[i] < 0) {
-//             spins[i] *= -1;
-
-//             return cobi_simple_descent(spins, weights);
-//         }
+//     // given num place lower 6 bits, in reverse order, into bin_list
+//     int i;
+//     int shift = 0;
+//     for (i = 0; i < 6; i++) {
+//         bin_list[i] = (num >> shift) & 1;
+//         shift++;
 //     }
 // }
 
-// ising subproblem solver
-#define CHIP_OUTPUT_SIZE 432
+// FPGA Control interface
+void cobi_reset()
+{
+    pci_write_data write_data;
+    // TODO how to reset via pci driver?
+    write_data.offset = 8 * sizeof(uint32_t);
+    write_data.value = 0x00000000;    // initialize axi interface control
+    if (Verbose_ > 2) {
+        printf("Initialize cobi chips interface controller\n");
+    }
+
+    if (write(cobi_fd, &write_data, sizeof(write_data)) != sizeof(write_data)) {
+        perror("Failed to write to device");
+        exit(3);
+    }
+}
+
+// void cobi_enable() {
+//     pci_write_data write_data;
+
+//     // fsm control for cobi axi interface
+//     write_data.offset = 8 * sizeof(uint32_t);
+//     write_data.value = 0x0000000F; // Read enable
+
+//     if (write(cobi_fd, &write_data, sizeof(write_data)) != sizeof(write_data)) {
+//         perror("Failed to write fsm control device");
+//         exit(-10);
+//     }
+// }
+
+
 CobiData *cobi_data_mk(size_t num_spins, int chip_delay, bool descend)
 {
     CobiData *d = (CobiData*)malloc(sizeof(CobiData));
@@ -354,12 +253,11 @@ CobiData *cobi_data_mk(size_t num_spins, int chip_delay, bool descend)
     d->w = 52;
     d->h = 52;
     d->programming_bits = _malloc_array2d(d->w, d->h);
-    d->chip1_output = (uint8_t*)malloc(sizeof(uint8_t) * CHIP_OUTPUT_SIZE);
+    d->chip1_output = (bool*)malloc(sizeof(bool) * COBI_CHIP_OUTPUT_LEN);
     d->chip1_spins = _malloc_array1d(num_spins);
 
-    // TODO: support chip 2
-    // d->chip2_output = (uint8_t*)malloc(sizeof(uint8_t) * CHIP_OUTPUT_SIZE);
-    // d->chip2_spins = _malloc_array1d(num_spins);
+    d->chip2_output = (bool*)malloc(sizeof(bool) * COBI_CHIP_OUTPUT_LEN);
+    d->chip2_spins = _malloc_array1d(num_spins);
 
     d->num_samples = 1;
     d->chip_delay = chip_delay;
@@ -371,43 +269,11 @@ CobiData *cobi_data_mk(size_t num_spins, int chip_delay, bool descend)
 void free_cobi_data(CobiData *d)
 {
     _free_array2d((void**)d->programming_bits, d->w);
-    free(d->chip_output);
-    free(d->spins);
+    free(d->chip1_output);
+    free(d->chip1_spins);
+    free(d->chip2_output);
+    free(d->chip2_spins);
     free(d);
-}
-
-void cobi_reset()
-{
-    // TODO how to reset via pci driver?
-    // // #reset startup
-    // GPIO_WRITE(chip, RESETB, GPIO_HIGH);
-    // GPIO_WRITE(chip, M_READY, GPIO_LOW);
-
-    // for (int i = 0; i < 16; i ++) {
-    //     GPIO_WRITE(chip, S_DATA[i], GPIO_LOW);
-    // }
-
-    // GPIO_WRITE(chip, S_LAST, GPIO_LOW);
-
-    // // #reset
-    // GPIO_WRITE(chip, CLK, GPIO_HIGH);
-    // GPIO_WRITE(chip, RESETB, GPIO_LOW);
-    // GPIO_WRITE(chip, CLK, GPIO_LOW);
-    // usleep(1000);
-
-    // GPIO_WRITE(chip, CLK, GPIO_HIGH);
-    // usleep(1000);
-    // GPIO_WRITE(chip, RESETB, GPIO_HIGH);
-    // GPIO_WRITE(chip, CLK, GPIO_LOW);
-
-    // usleep(1000);
-    // GPIO_WRITE(chip, CLK, GPIO_HIGH);
-    // usleep(100);
-    // GPIO_WRITE(chip, CLK, GPIO_LOW);
-    // usleep(100);
-    // GPIO_WRITE(chip, CLK, GPIO_HIGH);
-    // usleep(100);
-    // GPIO_WRITE(chip, CLK, GPIO_LOW);
 }
 
 uint8_t hex_mapping(int val)
@@ -449,21 +315,58 @@ uint8_t hex_mapping(int val)
     }
 }
 
-#define SHIL_ROW 26
+uint32_t *cobi_serialize_programming_bits(int **prog_bits, int prog_dim, int *num_words)
+{
+    int num_bits = prog_dim * prog_dim * 4;
+    *num_words = num_bits / 32;
+    uint32_t *out_words = (uint32_t*)malloc(*num_words * sizeof(uint32_t));
+
+    int word_index = *num_words - 1;
+    int nibble_count = 0;
+    out_words[word_index] = 0;
+
+    /* int num_padding_bits = (32 - (num_bits % 32)) % 32; */
+    /* for (int i = 0; i < num_padding_bits; i++) { */
+    /*     nibble_count++; */
+    /* } */
+    int iter_count = 0;
+    uint32_t cur_val = 0;
+    for (int row = prog_dim - 1; row >= 0; row--) {
+        for (int col = 0; col < prog_dim; col++) {
+            iter_count++;
+            cur_val = (cur_val  << 4) | prog_bits[row][col];
+            nibble_count++;
+            /* printf("@[%d,%d] == %d, nib count %d, cur val %08X\n", row, col, prog_bits[row][col], nibble_count, cur_val); */
+
+            if (nibble_count >= 8) {
+                out_words[word_index] = cur_val;
+
+                /* printf("--index %d, word %08X--\n", word_index, cur_val); */
+                word_index--;
+                out_words[word_index] = 0;
+
+                cur_val = 0;
+                nibble_count = 0;
+            }
+        }
+    }
+    /* printf("iter_count: %d, num_words: %d, word index: %d\n", iter_count, *num_words, word_index); */
+
+    return out_words;
+}
 
 void cobi_prepare_weights(
-    int **weights, int weight_dim, int shil_val, uint8_t *control_bits,
-    int **program_array
-// , int control_bits_len
+    int **weights, int weight_dim, int shil_val, uint8_t *control_bits, int **program_array
 ) {
-    if (weight_dim != 46) {
+    if (weight_dim != COBI_WEIGHT_MATRIX_DIM) {
         printf("Bad weight dimensions: %d by %d\n", weight_dim, weight_dim);
         exit(2);
     }
 
-    int program_dim = weight_dim + 6; // 52
+    int mapped_shil_val = hex_mapping(shil_val);
+    int program_dim = COBI_PROGRAM_MATRIX_DIM; // 52
 
-    // zero first, add control bits
+    // zero outer rows and columns
     for(int k = 0; k < program_dim; k++) {
         program_array[0][k] = 0;
         program_array[1][k] = 0;
@@ -485,26 +388,26 @@ void cobi_prepare_weights(
     // add shil
     for (int k = 1; k < program_dim - 1; k++) {
         // rows
-        program_array[SHIL_ROW][k]     = shil_val;
-        program_array[SHIL_ROW + 1][k] = shil_val;
+        program_array[COBI_SHIL_ROW][k]     = mapped_shil_val;
+        program_array[COBI_SHIL_ROW + 1][k] = mapped_shil_val;
 
         // columns are populated in reverse order
-        program_array[k][SHIL_ROW - 2]     = shil_val;
-        program_array[k][SHIL_ROW - 2 + 1] = shil_val;
+        program_array[k][COBI_SHIL_ROW - 2]     = mapped_shil_val;
+        program_array[k][COBI_SHIL_ROW - 2 + 1] = mapped_shil_val;
     }
 
     // populate weights
     int row;
     int col;
     for (int i = 0; i < weight_dim; i++) {
-        if (i < SHIL_ROW - 2) {
+        if (i < COBI_SHIL_ROW - 2) {
             row = i + 2;
         } else {
             row = i + 4; // account for 2 shil rows and zeroed rows
         }
 
         for (int j = 0; j < weight_dim; j++) {
-            if (j < SHIL_ROW - 2) {
+            if (j < COBI_SHIL_ROW - 2) {
                 col = program_dim - 3 - j;
             } else {
                 col = program_dim - 5 - j;
@@ -514,156 +417,122 @@ void cobi_prepare_weights(
         }
     }
 
-    // return program_array;
+    // diag
+    for (int i = 0; i < program_dim; i++) {
+        program_array[program_dim - 1 - i][i] = 0;
+    }
 }
 
-void cobi_program_weights(int **program_array)
+#define RAW_BYTE_COUNT 338
+void cobi_write_program(uint32_t *program, int num_words)
 {
     pci_write_data write_data;
+
+    if (num_words != (COBI_PROGRAM_MATRIX_DIM * COBI_PROGRAM_MATRIX_DIM / 8)) {
+        perror("Bad program size\n");
+        exit(-9);
+    }
 
     if (Verbose_ > 0) {
         printf("Programming chip\n");
     }
 
-    // Perform write operations
-    for (i = 0; i < RAW_BYTE_CNT; ++i) {
+    /* /\* Perform write operations *\/ */
+    for (int i = 0; i < RAW_BYTE_COUNT; ++i) {
         write_data.offset = 9 * sizeof(uint32_t);
-        write_data.value = rawData[i];
+        write_data.value = program[i];    // data to write
         write_data.value = ((write_data.value & 0xFFFF0000) >> 16) |
             ((write_data.value & 0x0000FFFF) << 16);
         if (write(cobi_fd, &write_data, sizeof(write_data)) != sizeof(write_data)) {
             perror("Failed to write to device");
-            exit(2)
-                }
+            close(cobi_fd);
+            exit(-10);
+        }
     }
-
-    // fsm control for cobi axi interface
-    write_data.offset = 8 * sizeof(uint32_t);
-    write_data.value = 0x0000000F;
-
-    if (write(cobi_fd, &write_data, sizeof(write_data)) != sizeof(write_data)) {
-        perror("Failed to write to device");
-        exit(2);
-    }
-
-    write_data.offset = 8 * sizeof(uint32_t);
-    write_data.value = 0x0000000D;
-
-    if (write(cobi_fd, &write_data, sizeof(write_data)) != sizeof(write_data)) {
-        perror("Failed to write to device");
-        exit(2);
-    }
-
-
-    // GPIO_WRITE(chip, M_READY, GPIO_LOW);
-    // GPIO_WRITE(chip, S_VALID, GPIO_HIGH);
-
-    // for (int i = 0; i < 52; i++) {
-    //     for (int j = 12; j >= 0; j--) {
-
-    //         uint8_t bits[16];
-
-    //         for (int k = 0; k < 4; k++) {
-    //             int v = program_array[i][j * 4 + k]; // current 4 bits
-
-    //             int bit_index = 12 - 4*k;
-
-    //             bits[bit_index + 3] = (v & 0x8) >> 3;
-    //             bits[bit_index + 2] = (v & 0x4) >> 2;
-    //             bits[bit_index + 1] = (v & 0x2) >> 1;
-    //             bits[bit_index]     = v &  0x1;
-    //         }
-
-    //         for (int k = 0; k < 16; k++) {
-    //             GPIO_WRITE(chip, S_DATA[k], bits[k]);
-    //         }
-
-    //         // # once all bits are assigned to s_data_#,
-    //         // # indicate this is the last data set before clk's rising edge
-    //         if (i == 51 && j == 0) {
-    //             GPIO_WRITE(chip, S_LAST, GPIO_HIGH);
-    //         }
-
-    //         GPIO_WRITE(chip, CLK, GPIO_HIGH);
-    //         GPIO_WRITE(chip, CLK, GPIO_LOW);
-    //     }
-    // }
-
-    // GPIO_WRITE(chip, S_LAST, GPIO_LOW);
-    // GPIO_WRITE(chip, S_VALID, GPIO_LOW); // #s_valid low for 2 clk cycles
-
-    // GPIO_WRITE_DELAY(chip, CLK, GPIO_HIGH, 100);
-    // GPIO_WRITE_DELAY(chip, CLK, GPIO_LOW, 100);
-    // GPIO_WRITE_DELAY(chip, CLK, GPIO_HIGH, 100);
-    // GPIO_WRITE(chip, CLK, GPIO_LOW);
-
-    // GPIO_WRITE(chip, S_VALID, GPIO_LOW);
 
     if (Verbose_ > 0) {
         printf("Programming completed\n");
     }
 }
 
-/*
- * cobi_read_spins
- *
- * returns spins via `cobi_data->spins`
- */
-void cobi_read_spins(CobiData *cobi_data)
+// Perform 1's compliment conversion to int for a given bit sequence
+int bits_to_signed_int(bool *bits, int num_bits)
 {
-    for (int i = 0; i < 46; i++) {
-        if (cobi_data->chip1_output[i + 4] == 0) {
-            cobi_data->chip1_spins[i] = 1;
-        } else {
-            cobi_data->chip1_spins[i] = -1;
-        }
-        // printf("%d: %d\n", i, spins[i]);
+    if (num_bits >= 8 * sizeof(int)) {
+        perror("Bits cannot be represented as int");
+        exit(2);
     }
+
+    int n = 0;
+    for (int i = 0; i < num_bits; i++) {
+        n |= bits[i] << num_bits - 1 - i;
+    }
+
+    unsigned int sign_bit = 1 << (num_bits - 1);
+    return (n & sign_bit - 1) - (n & sign_bit);
+
+    /* n = int(x, 2) */
+    /* s = 1 << (bits - 1) */
+    /* return (n & s - 1) - (n & s) */
 }
 
-void cobi_read(CobiData *cobi_data)
+void cobi_read(CobiData *cobi_data, bool use_polling)
 {
     uint32_t read_data;
     off_t read_offset;
+    int num_read_bits = 32;
 
-    while(1) {
-        read_offset = 10 * sizeof(uint32_t); // Example read offset
+    if (use_polling) {
+        while(1) {
+            read_offset = 10 * sizeof(uint32_t); // Example read offset
 
-        // Write read offset to device
-        if (write(fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
-            perror("Failed to set read offset in device");
-            exit(2);
+            // Write read offset to device
+            if (write(cobi_fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+                perror("Failed to set read offset in device");
+                exit(2);
+            }
+
+            // Read data from device
+            if (read(cobi_fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
+                perror("Failed to read from device");
+                exit(2);
+            }
+
+            if(read_data == 0x0){
+                break;
+            }
         }
-
-        // Read data from device
-        if (read(fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
-            perror("Failed to read from device");
-            exit(2);
-        }
-
-        if(read_data == 0x0){
-            break;
-        }
+    } else {
+        usleep(350);
     }
 
-    // Read from chip 1
-
-    for (i = 0; i < READ_COUNT_COBI_CHIP_1; ++i) {
+        // Read from chip 1
+    for (int i = 0; i < 3; ++i) {
         read_offset = (4 + i) * sizeof(uint32_t);
 
         // Write read offset to device
-        if (write(fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+        if (write(cobi_fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
             perror("Failed to set read offset in device");
-            exit(2);
+            exit(-3);
         }
 
         // Read data from device
-        if (read(fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
+        if (read(cobi_fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
             perror("Failed to read from device");
-            exit(2);
+            exit(-4);
         }
 
-        cobi_data->chip1_output[i] = read_data;
+
+        // reverse order of bits
+        if (i == 2) {
+            num_read_bits = 14;
+        } else {
+            num_read_bits = 32;
+        }
+        for (int j = 0; j < num_read_bits; j++) {
+            uint32_t mask = 1 << j;
+            cobi_data->chip1_output[32 * i + j] = ((read_data & mask) >> j) << (num_read_bits - 1 - j);
+        }
 
         if (Verbose_ > 2) {
             printf("Read data from cobi chip A at offset %ld: 0x%x\n", read_offset, read_data);
@@ -672,24 +541,33 @@ void cobi_read(CobiData *cobi_data)
 
     // Read from chip 2
 
-    for (i = 0; i < READ_COUNT_COBI_CHIP_2; ++i) {
+    for (int i = 0; i < 3; ++i) {
         // TODO verify read_offset calculations and consolidate with chip1 read loop
 
         read_offset = (13 + i) * sizeof(uint32_t);
 
         // Write read offset to device
-        if (write(fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+        if (write(cobi_fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
             perror("Failed to set read offset in device");
-            exit(2);
+            exit(-5);
         }
 
         // Read data from device
-        if (read(fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
+        if (read(cobi_fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
             perror("Failed to read from device");
-            exit(2);
+            exit(-6);
         }
 
-        cobi_data->chip2_output[i] = read_data;
+        // reverse order of bits
+        if (i == 2) {
+            num_read_bits = 14;
+        } else {
+            num_read_bits = 32;
+        }
+        for (int j = 0; j < num_read_bits; j++) {
+            uint32_t mask = 1 << j;
+            cobi_data->chip2_output[32 * i + j] = ((read_data & mask) >> j) << (num_read_bits - 1 - j);
+        }
 
         if (Verbose_ > 2) {
             printf("Read data from cobi chip B at offset %ld: 0x%x\n", read_offset, read_data);
@@ -700,14 +578,14 @@ void cobi_read(CobiData *cobi_data)
 
     read_offset = 48 * sizeof(uint32_t); // Example read offset
 
-    if (write(fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+    if (write(cobi_fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
         perror("Failed to set read offset in device");
-        exit(2);
+        exit(-7);
     }
 
-    if (read(fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
+    if (read(cobi_fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
         perror("Failed to read from device");
-        exit(2)
+        exit(-8);
     }
 
     cobi_data->process_time = read_data;
@@ -715,144 +593,78 @@ void cobi_read(CobiData *cobi_data)
     if (Verbose_ > 2) {
         printf("Process time: 0x%x\n", read_data);
     }
-}
 
-// int cobi_read_ham(CobiData *cobi_data)
-// {
-//         int tmp = cobi_data->chip1_output[65];
-//         for (int i = 64; i >= 50; i--) {
-//             tmp = (tmp << 1) + cobi_data->chip1_output[i];
-//         }
-//         int s = 1 << 15;
-//         int ham_energy = (tmp & (s - 1)) - (tmp & s);
-//         return ham_energy;
-// }
-
-void cobi_modify_array_for_pins(int **initial_array, int  **final_pin_array, int problem_size)
-{
-    int total_0_rows = 63 - problem_size;
-
-    int y_diag = problem_size; //#set to y-location at upper right corner of problem region
-
-    // #part 1: adjust all values within problem regions of array
-    int x, y, integer_pin;
-    for (x = total_0_rows; x < 63; x++) {
-        for (y = 1; y < problem_size + 1; y++) {
-            integer_pin = initial_array[x][y];
-
-            if (integer_pin == -7) {
-                final_pin_array[x][y] = 0b001110; // # load value of 14.0 to final_array
-            } else if (integer_pin == -6) {
-                final_pin_array[x][y] = 0b001100;     // # load value of 12.0 to final_array
-
-            } else if (integer_pin == -5) {
-                final_pin_array[x][y] = 0b001010;     // # load value of 10.0 to final_array
-
-            } else if (integer_pin == -4) {
-                final_pin_array[x][y] = 0b001000;     // # load value of 8.0 to final_array
-
-            } else if (integer_pin == -3) {
-                final_pin_array[x][y] = 0b000110;     // # load value of 6.0 to final_array
-
-            } else if (integer_pin == -2) {
-                final_pin_array[x][y] = 0b000100;     // # load value of 4.0 to final_array
-
-            } else if (integer_pin == -1) {
-                final_pin_array[x][y] = 0b000010;     // # load value of 2.0 to final_array
-
-            } else if (integer_pin == 0) {
-                final_pin_array[x][y] = 0b000000;     // # load value of 0.0 to final_array
-
-            } else if (integer_pin == 1) {
-                final_pin_array[x][y] = 0b000011;     // # load value of 3.0 to final_array
-
-            } else if (integer_pin == 2) {
-                final_pin_array[x][y] = 0b000101;     // # load value of 5.0 to final_array
-
-            } else if (integer_pin == 3) {
-                final_pin_array[x][y] = 0b000111;     // # load value of 7.0 to final_array
-
-            } else if (integer_pin == 4) {
-                final_pin_array[x][y] = 0b001001;     // # load value of 9.0 to final_array
-
-            } else if (integer_pin == 5) {
-                final_pin_array[x][y] = 0b001011;     // # load value of 11.0 to final_array
-
-            } else if (integer_pin == 6) {
-                final_pin_array[x][y] = 0b001101;     // # load value of 13.0 to final_array
-
-            } else if (integer_pin == 8) {
-                final_pin_array[x][y] = 0b011111;     // # load the strong positive coupling to the final_array
-            } else if (integer_pin == -8) {
-                final_pin_array[x][y] = 0b111110;     // # load the strong negative coupling to the final_array
-            } else { // # integer_pin == 7
-                // TODO rectify value in comment with actual value being assigned
-                if (y == y_diag) { // #along diagonal
-                    final_pin_array[x][y] = 0b001111; // # load value of 31.0 to final_array
-                } else {
-                    final_pin_array[x][y] = 0b001111; // # load value of 15.0 to final_array
-
-                }
-            }
-        }
-        y_diag--;
+    // Parse program id
+    for (int i = 0; i < 12; i++) {
+            cobi_data->chip1_program_id =
+                (cobi_data->chip1_program_id << 1) | cobi_data->chip1_output[i];
+            cobi_data->chip2_program_id =
+                (cobi_data->chip2_program_id << 1) | cobi_data->chip2_output[i];
     }
 
-    // #part 2 - adjust remaining 7s in diagonal
-    y_diag = problem_size;
-    for (x = 0; x < 64; x++) {
-        for (y = 0; y < 64; y++) {
-            integer_pin = initial_array[x][y];
-            if (y == y_diag && integer_pin == 7) {
-                final_pin_array[x][y] = 0b001111;
-            }
-        }
+    // Parse energy
+    cobi_data->chip1_energy = bits_to_signed_int(&cobi_data->chip1_output[12], 16);
+    cobi_data->chip2_energy = bits_to_signed_int(&cobi_data->chip2_output[12], 16);
+
+    // Parse spins, from bits 28 to 74
+    for (int i = 0; i < 46; i++) {
+        cobi_data->chip1_spins[i] = cobi_data->chip1_output[i + 28];
+        cobi_data->chip2_spins[i] = cobi_data->chip2_output[i + 28];
     }
-    /* return final_pin_array; */
+
+    // Parse core id
+    for (int i = 74; i < 78; i++) {
+        cobi_data->chip1_core_id =
+            (cobi_data->chip1_core_id << 1) | cobi_data->chip1_output[i];
+        cobi_data->chip2_core_id =
+            (cobi_data->chip2_core_id << 1) | cobi_data->chip2_output[i];
+    }
 }
 
 int *cobi_test_multi_times(
-    CobiData *cobi_data, int sample_times, int size, int8_t *solution
+    CobiData *cobi_data, int sample_times, int size, int8_t *solution, bool use_polling
 ) {
     int times = 0;
     int *all_results = _malloc_array1d(sample_times);
     int cur_best = 0;
     int res;
 
+    double reftime = 0;
+
     while (times < sample_times) {
-        cobi_reset();
+        // cobi_reset();
 
-        // Decide when to start programming. Is this relevent with pci? probably no.
-        // while(GPIO_READ(chip, S_READY) != 1) {
-        //     GPIO_WRITE(chip, CLK, GPIO_HIGH);
-        //     GPIO_WRITE(chip, CLK, GPIO_LOW);
-        // }
+        reftime = omp_get_wtime();
+        cobi_write_program(cobi_data->serialized_program, cobi_data->serialized_len);
+        write_cum_time += omp_get_wtime() - reftime;
 
-        cobi_program_weights(cobi_data->programming_bits);
 
-        memset(cobi_data->chip_output, 0, sizeof(uint8_t) * CHIP_OUTPUT_SIZE);
+        // cobi_enable();
 
-        // while(GPIO_READ(chip, M_VALID) != 1) {
-        //     GPIO_WRITE(chip, CLK, GPIO_HIGH);
-        //     GPIO_WRITE(chip, CLK, GPIO_LOW);
-        // }
+        // memset(cobi_data->chip1_output, 0, sizeof(bool) * COBI_CHIP_OUTPUT_LEN);
+        // memset(cobi_data->chip2_output, 0, sizeof(bool) * COBI_CHIP_OUTPUT_LEN);
 
-        cobi_read(cobi_data->chip_output);
+        reftime = omp_get_wtime();
+        cobi_read(cobi_data, use_polling);
+        read_cum_time += omp_get_wtime() - reftime;
 
         if (Verbose_ > 2) {
             printf("\nSample number %d\n", times);
         }
 
-        cobi_read_spins(cobi_data);
-
-        res = cobi_read_ham(cobi_data);  //# calculate H energy from chip data
+        // TODO use results from both chips
+        res = cobi_data->chip1_energy;
 
         all_results[times] = res;
+
+        if (res == 0) {
+            subprob_zero_count++;
+        }
 
         if (res < cur_best) {
             cur_best = res;
             for (size_t i = 0; i < cobi_data->probSize; i++ ) {
-                solution[i] = cobi_data->spins[i];
+                solution[i] = cobi_data->chip1_spins[i] == 0 ? 1 : -1;
             }
         }
 
@@ -955,36 +767,37 @@ void ising_from_qubo(double **ising, double **qubo, int size)
 
 int cobi_init(const char* device_file)
 {
-    chip = open(device_file, O_RDWR); // O_RDWR to allow both reading and writing
-    if (fd < 0) {
+    pci_write_data write_data;
+
+    cobi_fd = open(device_file, O_RDWR); // O_RDWR to allow both reading and writing
+    if (cobi_fd < 0) {
         perror("Failed to open device file");
-        return;
+        exit(2);
     }
 
-    write_data.offset = 8 * sizeof(uint32_t);
-    write_data.value = 0x00000000;    // initialize axi interface control
-    if (Verbose_ > 0) {
-        printf("Initialize cobi chips interface controller\n");
-    }
+    // if (Verbose_ > 0) {
+    //     printf("Initialize cobi chips interface controller\n");
+    // }
 
-    if (write(fd, &write_data, sizeof(write_data)) != sizeof(write_data)) {
-        perror("Failed to write to device");
-        close(fd);
-        return;
-    }
+    // write_data.offset = 8 * sizeof(uint32_t);
+    // write_data.value = 0x00000000;    // initialize axi interface control
+
+    // if (write(cobi_fd, &write_data, sizeof(write_data)) != sizeof(write_data)) {
+    //     perror("Failed to write to device");
+    //     close(cobi_fd);
+    //     exit(2);
+    // }
 
     if(Verbose_ > 0) {
         printf("Cobi chip initialized successfully\n");
     }
 
-    return chip;
+    return 0;
 }
 
-bool cobi_established()
+bool cobi_established(const char* device_file)
 {
-    const char device_file[] = "/dev/cobi_pcie_card1";
     // TODO handle multiple cards
-
     if (access(device_file, F_OK) == 0) {
         if (Verbose_ > 0) printf("Accessing device file: %s\n", device_file);
         return true;
@@ -996,7 +809,8 @@ bool cobi_established()
 }
 
 void cobi_solver(
-    double **qubo, int numSpins, int8_t *qubo_solution, int num_samples, int chip_delay, bool descend
+    double **qubo, int numSpins, int8_t *qubo_solution, int num_samples, int chip_delay,
+    bool descend, bool use_polling
 ) {
     if (numSpins > 46) {
         printf("Quitting.. cobi_solver called with size %d. Cannot be greater than 46.\n", numSpins);
@@ -1011,14 +825,16 @@ void cobi_solver(
     ising_from_qubo(ising, qubo, numSpins);
     cobi_norm_val(norm_ising, ising, numSpins);
 
-    cobi_prepare_weights(norm_ising, 46, 7, default_control_bytes, cobi_data->programming_bits);
+    cobi_prepare_weights(norm_ising, 46, 7, default_control_nibbles, cobi_data->programming_bits);
+    cobi_data->serialized_program = cobi_serialize_programming_bits(
+        cobi_data->programming_bits, 52, &cobi_data->serialized_len
+    );
 
     // Convert solution from QUBO to ising
     ising_solution_from_qubo_solution(ising_solution, qubo_solution, numSpins);
 
-    //
     int *results = cobi_test_multi_times(
-        cobi_data, num_samples, numSpins, ising_solution
+        cobi_data, num_samples, numSpins, ising_solution, use_polling
     );
 
     // Convert ising solution back to QUBO form
@@ -1038,7 +854,8 @@ void cobi_close()
         printf("cobi chip clean up\n");
     }
 
-    close(chip);
+    // cobi_reset();
+    close(cobi_fd);
 }
 
 #ifdef __cplusplus

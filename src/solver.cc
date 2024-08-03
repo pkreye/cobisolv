@@ -617,7 +617,10 @@ void cobi_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, voi
 {
     parameters_t *params = (parameters_t*) sub_sampler_data;
 
-    cobi_solver(sub_qubo, subMatrix, sub_solution, params->cobi_num_samples, params->cobi_delay, false);
+    cobi_solver(sub_qubo, subMatrix, sub_solution,
+                params->cobi_num_samples, params->cobi_delay, false,
+                params->use_polling
+               );
 
     if (params->cobi_descend) {
         int64_t sub_bit_flips = 0;
@@ -653,6 +656,19 @@ parameters_t default_parameters() {
     param.cobi_delay = 100;
     param.cobi_num_samples = 10;
     param.cobi_descend = false;
+
+    // tmp
+    param.use_polling = false;
+
+    param.pid = 0xFF;
+    param.dco =  0x5;
+    param.sample_delay = 0xFF;
+    param.max_fails = 0x1F;
+    param.rosc_time = 0x3;
+    param.shil_time = 0xF;
+    param.weight_time = 0x3;
+    param.sample_time = 0xFD;
+
     return param;
 }
 
@@ -1065,6 +1081,11 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
             num_output_solutions, numPartCalls, final_time, subQuboTime, param
         );
     }
+
+    __cobi_print_write_time();
+    __cobi_print_read_time();
+    __cobi_print_subprob_zero_count();
+
 
     free(solution);
     free(tabu_solution);

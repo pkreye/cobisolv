@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 2.8)
 
 option(COBISOLV_CROSS_COMPILE "Cross compile for Raspberry Pi." OFF)
 option(COBISOLV_BUILD_STATIC "Build static executable." ON)
@@ -51,7 +51,6 @@ if(COBISOLV_BUILD_CMD)
 
     # link library
     target_link_libraries(cobisolv libcobisolv)
-    target_link_libraries(cobisolv lgpio)
 endif()
 
 if(COBISOLV_BUILD_TESTS)

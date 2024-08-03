@@ -20,19 +20,28 @@ extern "C" {
 #include <stddef.h>
 #include <stdbool.h>
 
-int usleep(long usecs);
+#define COBI_WEIGHT_MATRIX_DIM 46
+#define COBI_PROGRAM_MATRIX_DIM 52
 
 typedef struct CobiData {
     size_t probSize;
     size_t w;
     size_t h;
     int **programming_bits;
+    uint32_t *serialized_program;
+    int serialized_len;
 
-    uint32_t *chip1_output;
-    uint32_t *chip2_output;
-
+    bool *chip1_output;
+    int chip1_program_id;
     int *chip1_spins;
+    int chip1_energy;
+    int chip1_core_id;
+
+    bool *chip2_output;
+    int chip2_program_id;
     int *chip2_spins;
+    int chip2_energy;
+    int chip2_core_id;
 
     uint32_t process_time;
 
@@ -43,10 +52,38 @@ typedef struct CobiData {
     int sample_test_count;
 } CobiData;
 
-bool cobi_established(void);
-int cobi_init(void);
+/* typedef struct CobiData { */
+/*     size_t probSize; */
+/*     size_t w; */
+/*     size_t h; */
+/*     int **programming_bits; */
+
+/*     uint8_t *chip1_output; */
+/*     uint8_t *chip2_output; */
+
+/*     int *chip1_spins; */
+/*     int *chip2_spins; */
+
+/*     uint32_t process_time; */
+
+/*     int num_samples; */
+/*     int64_t chip_delay; */
+/*     bool descend; */
+
+/*     int sample_test_count; */
+/* }  CobiData;*/
+
+bool cobi_established(const char*);
+int cobi_init(const char*);
 void cobi_close(void);
-void cobi_solver(double **, int, int8_t *, int, int, bool);
+void cobi_solver(double **, int, int8_t *, int, int, bool, bool);
+
+
+
+// For testing: to be removed
+    void __cobi_print_write_time();
+    void __cobi_print_read_time();
+    void __cobi_print_subprob_zero_count();
 
 #ifdef __cplusplus
 }
