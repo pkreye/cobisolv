@@ -785,18 +785,7 @@ int cobi_init(const char* device_file)
         exit(2);
     }
 
-    // if (Verbose_ > 0) {
-    //     printf("Initialize cobi chips interface controller\n");
-    // }
-
-    // write_data.offset = 8 * sizeof(uint32_t);
-    // write_data.value = 0x00000000;    // initialize axi interface control
-
-    // if (write(cobi_fd, &write_data, sizeof(write_data)) != sizeof(write_data)) {
-    //     perror("Failed to write to device");
-    //     close(cobi_fd);
-    //     exit(2);
-    // }
+    cobi_reset();
 
     if(Verbose_ > 0) {
         printf("Cobi chip initialized successfully\n");

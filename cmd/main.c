@@ -339,7 +339,7 @@ int main(int argc, char *argv[]) {
     }
     numsolOut_ = 0;
 
-    const char cobi_device_file[] = "/dev/cobi_pcie_card1";
+    const char cobi_device_file[] = "/dev/cobi_pcie_card0";
     if (use_cobi && cobi_established(cobi_device_file)) {
 
         if (cobi_init(cobi_device_file) != 0) {
