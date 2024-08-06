@@ -114,9 +114,9 @@ int main(int argc, char *argv[]) {
                                        {"delimitedOutput", no_argument, NULL, 'd'},
                                        {"cobiNumSamples", required_argument, NULL, 'z'},
                                        {"numOutputSolutions", required_argument, NULL, 'N'},
-                                       {"usePolling", no_argument, NULL, 'P'},
 
-                                       // tmp
+                                       // tmp testing cobisolv-pcie
+                                       {"turnOffPolling", no_argument, NULL, 'P'},
                                        {"pid", required_argument, NULL, 1000},
                                        {"dco", required_argument, NULL, 1001},
                                        {"sdelay", required_argument, NULL, 1002},
@@ -262,11 +262,12 @@ int main(int argc, char *argv[]) {
             case 'D':
                 param.cobi_descend = true;
                 break;
-            case 'P':
-                param.use_polling = true;
-                break;
 
             // tmp
+            case 'P':
+                param.use_polling = false;
+                break;
+
             case 1000:
                 param.pid = (uint16_t) strtol(optarg, &chx, 16);
                 printf("pid %s => %d\n", optarg, param.pid);

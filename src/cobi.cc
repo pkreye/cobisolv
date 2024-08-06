@@ -256,8 +256,16 @@ CobiData *cobi_data_mk(size_t num_spins, int chip_delay, bool descend)
     d->chip1_output = (bool*)malloc(sizeof(bool) * COBI_CHIP_OUTPUT_LEN);
     d->chip1_spins = _malloc_array1d(num_spins);
 
+    d->chip1_problem_id = 0;
+    d->chip1_energy = 0;
+    d->chip1_core_id = 0;
+
     d->chip2_output = (bool*)malloc(sizeof(bool) * COBI_CHIP_OUTPUT_LEN);
     d->chip2_spins = _malloc_array1d(num_spins);
+
+    d->chip2_problem_id = 0;
+    d->chip2_energy = 0;
+    d->chip2_core_id = 0;
 
     d->num_samples = 1;
     d->chip_delay = chip_delay;
@@ -484,7 +492,7 @@ void cobi_write_program(uint32_t *program, int num_words)
 }
 
 // Perform 1's compliment conversion to int for a given bit sequence
-int bits_to_signed_int(bool *bits, int num_bits)
+int bits_to_signed_int(bool *bits, unsigned int num_bits)
 {
     if (num_bits >= 8 * sizeof(int)) {
         perror("Bits cannot be represented as int");
@@ -492,12 +500,12 @@ int bits_to_signed_int(bool *bits, int num_bits)
     }
 
     int n = 0;
-    for (int i = 0; i < num_bits; i++) {
+    for (unsigned int i = 0; i < num_bits; i++) {
         n |= bits[i] << (num_bits - 1 - i);
     }
 
     unsigned int sign_bit = 1 << (num_bits - 1);
-    return (n & sign_bit - 1) - (n & sign_bit);
+    return (n & (sign_bit - 1)) - (n & sign_bit);
 
     /* n = int(x, 2) */
     /* s = 1 << (bits - 1) */
@@ -605,11 +613,13 @@ void cobi_read(CobiData *cobi_data, bool use_polling)
     }
 
     // Parse program id
+    cobi_data->chip1_problem_id = 0;
+    cobi_data->chip2_problem_id = 0;
     for (int i = 0; i < 12; i++) {
-        cobi_data->chip1_program_id =
-            (cobi_data->chip1_program_id << 1) | cobi_data->chip1_output[i];
-        cobi_data->chip2_program_id =
-            (cobi_data->chip2_program_id << 1) | cobi_data->chip2_output[i];
+        cobi_data->chip1_problem_id =
+            (cobi_data->chip1_problem_id << 1) | cobi_data->chip1_output[i];
+        cobi_data->chip2_problem_id =
+            (cobi_data->chip2_problem_id << 1) | cobi_data->chip2_output[i];
     }
 
     // Parse energy
@@ -623,11 +633,24 @@ void cobi_read(CobiData *cobi_data, bool use_polling)
     }
 
     // Parse core id
+    cobi_data->chip1_core_id = 0;
+    cobi_data->chip2_core_id = 0;
     for (int i = 74; i < 78; i++) {
         cobi_data->chip1_core_id =
             (cobi_data->chip1_core_id << 1) | cobi_data->chip1_output[i];
         cobi_data->chip2_core_id =
             (cobi_data->chip2_core_id << 1) | cobi_data->chip2_output[i];
+    }
+}
+
+void print_int_array2d(int **a, int w, int h)
+{
+    int x, y;
+    for (x = 0; x < w; x++) {
+        for (y = 0; y < h; y++) {
+            printf("%d ", a[x][y]);
+        }
+        printf("\n");
     }
 }
 
@@ -642,17 +665,9 @@ int *cobi_test_multi_times(
     double reftime = 0;
 
     while (times < sample_times) {
-        // cobi_reset();
-
         reftime = omp_get_wtime();
         cobi_write_program(cobi_data->serialized_program, cobi_data->serialized_len);
         write_cum_time += omp_get_wtime() - reftime;
-
-
-        // cobi_enable();
-
-        // memset(cobi_data->chip1_output, 0, sizeof(bool) * COBI_CHIP_OUTPUT_LEN);
-        // memset(cobi_data->chip2_output, 0, sizeof(bool) * COBI_CHIP_OUTPUT_LEN);
 
         reftime = omp_get_wtime();
         cobi_read(cobi_data, use_polling);
@@ -667,8 +682,21 @@ int *cobi_test_multi_times(
 
         all_results[times] = res;
 
-        if (res == 0) {
+        // Temporarily use 0xFF as the every problem id to verify we are getting results
+        if (res == 0 && cobi_data->chip1_problem_id != 0xFF) {
             subprob_zero_count++;
+            if (Verbose_ > 0) {
+                printf("Subprob zero:\n");
+                print_int_array2d(cobi_data->programming_bits, 52, 52);
+
+                for (int i = 0; i < cobi_data->serialized_len; i++) {
+                    printf("0X%08X,", cobi_data->serialized_program);
+                    if (i % 7  == 6) {
+                        printf("\n");
+                    }
+                }
+            }
+            continue;
         }
 
         if (res < cur_best) {
@@ -777,8 +805,6 @@ void ising_from_qubo(double **ising, double **qubo, int size)
 
 int cobi_init(const char* device_file)
 {
-    pci_write_data write_data;
-
     cobi_fd = open(device_file, O_RDWR); // O_RDWR to allow both reading and writing
     if (cobi_fd < 0) {
         perror("Failed to open device file");

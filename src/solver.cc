@@ -658,7 +658,7 @@ parameters_t default_parameters() {
     param.cobi_descend = false;
 
     // tmp
-    param.use_polling = false;
+    param.use_polling = true;
 
     param.pid = 0xFF;
     param.dco =  0x5;
@@ -1061,7 +1061,6 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
     // all done print results if needed and free allocated arrays
     if (WriteMatrix_) print_solution_and_qubo(Qbest, qubo_size, qubo);
 
-
     // If `param->output_solutions` is 0 print all unique solutions
     int num_output_solutions = param->num_output_solutions;
     if (param->num_output_solutions == 0) {
@@ -1082,10 +1081,12 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
         );
     }
 
-    __cobi_print_write_time();
-    __cobi_print_read_time();
-    __cobi_print_subprob_zero_count();
-
+    // Temporary output for debugging
+    if (Verbose_ > 0) {
+        __cobi_print_write_time();
+        __cobi_print_read_time();
+        __cobi_print_subprob_zero_count();
+    }
 
     free(solution);
     free(tabu_solution);

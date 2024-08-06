@@ -32,13 +32,13 @@ typedef struct CobiData {
     int serialized_len;
 
     bool *chip1_output;
-    int chip1_program_id;
+    int chip1_problem_id;
     int *chip1_spins;
     int chip1_energy;
     int chip1_core_id;
 
     bool *chip2_output;
-    int chip2_program_id;
+    int chip2_problem_id;
     int *chip2_spins;
     int chip2_energy;
     int chip2_core_id;
