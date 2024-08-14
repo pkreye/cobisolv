@@ -757,7 +757,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
     randomize_solution(tabu_solution, qubo_size);
     for (int i = 0; i < qubo_size; i++) {
         index[i] = i;  // initial index to 0,1,2,...qubo_size
-        solution[i] = 0;
+        solution[i] = tabu_solution[i];
     }
 
     int l = 0, DwaveQubo = 0;
