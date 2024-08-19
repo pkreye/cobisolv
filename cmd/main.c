@@ -340,21 +340,25 @@ int main(int argc, char *argv[]) {
     }
     numsolOut_ = 0;
 
-    const char cobi_device_file[] = "/dev/cobi_pcie_card0";
-    if (use_cobi && cobi_established(cobi_device_file)) {
+    if (use_cobi) {
+        const char cobi_device_file[] = "/dev/cobi_pcie_card0";
+        if (!cobi_established(cobi_device_file)) {
+            fprintf(stderr, "could not find cobi board\n");
+            exit(1);
+        }
 
-        if (cobi_init(cobi_device_file) != 0) {
-            printf("Init failed\n");
+        if (cobi_init() != 0) {
+            fprintf(stderr, "init failed\n");
             exit(1);
         }
 
         if (atexit(cobi_close) != 0) {
-            fprintf(stderr, "Failed to register exit function\n");
+            fprintf(stderr, "failed to register exit function\n");
             exit(1);
         }
 
         if (param.cobi_num_samples < 1) {
-            fprintf(stderr, "Number of samples must be greater than 0.\n");
+            fprintf(stderr, "number of samples must be greater than 0.\n");
             exit(2);
         }
 

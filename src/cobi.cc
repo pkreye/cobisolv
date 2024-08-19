@@ -18,10 +18,6 @@
 #include "util.h"
 #include "cobi.h"
 
-
-// #include "extern.h"  // qubo header file: global variable declarations
-// #include "macros.h"
-
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -62,7 +58,7 @@ void __cobi_print_subprob_zero_count()
 #define COBI_CHIP_OUTPUT_LEN 78
 #define COBI_CONTROL_NIBBLES_LEN 52
 
-static int cobi_fd;
+static int cobi_fd = -1;
 
 uint8_t default_control_nibbles[COBI_CONTROL_NIBBLES_LEN] = {
     0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA,
@@ -204,17 +200,6 @@ void _free_array2d(void **a, int w) {
     free(a);
 }
 
-// void binary_splice_rev(int num, int *bin_list)
-// {
-//     // given num place lower 6 bits, in reverse order, into bin_list
-//     int i;
-//     int shift = 0;
-//     for (i = 0; i < 6; i++) {
-//         bin_list[i] = (num >> shift) & 1;
-//         shift++;
-//     }
-// }
-
 // FPGA Control interface
 void cobi_reset()
 {
@@ -234,11 +219,9 @@ void cobi_reset()
 
 // void cobi_enable() {
 //     pci_write_data write_data;
-
 //     // fsm control for cobi axi interface
 //     write_data.offset = 8 * sizeof(uint32_t);
 //     write_data.value = 0x0000000F; // Read enable
-
 //     if (write(cobi_fd, &write_data, sizeof(write_data)) != sizeof(write_data)) {
 //         perror("Failed to write fsm control device");
 //         exit(-10);
@@ -491,7 +474,7 @@ void cobi_write_program(uint32_t *program, int num_words)
     }
 }
 
-// Perform 1's compliment conversion to int for a given bit sequence
+// Perform two's compliment conversion to int for a given bit sequence
 int bits_to_signed_int(bool *bits, unsigned int num_bits)
 {
     if (num_bits >= 8 * sizeof(int)) {
@@ -803,9 +786,41 @@ void ising_from_qubo(double **ising, double **qubo, int size)
     }
 }
 
-int cobi_init(const char* device_file)
+bool cobi_established(const char* device_file)
 {
-    cobi_fd = open(device_file, O_RDWR); // O_RDWR to allow both reading and writing
+    if (access(device_file, F_OK) == 0) {
+        if (Verbose_ > 0) printf("Accessing device file: %s\n", device_file);
+        return true;
+    } else {
+        // fprintf(stderr, "No device found at %s\n", device_file);
+        return false;
+    }
+}
+
+#define DEVICE_FILE_TEMPLATE "/dev/cobi_pcie_card%d"
+int cobi_init()
+{
+    int nextdevno = 0;
+    char device_file[22] = { 0 };
+
+    do {
+        snprintf(device_file, sizeof(device_file), DEVICE_FILE_TEMPLATE, nextdevno);
+        if (cobi_established(device_file)) {
+            if (Verbose_ > 2) {
+                printf("cobi init: trying board %s\n", device_file);
+            }
+
+            cobi_fd = open(device_file, O_RDWR); // O_RDWR to allow both reading and writing
+            nextdevno++;
+        } else if (nextdevno > 0) {
+            nextdevno = 0;
+            if (Verbose_ > 2) {
+                printf("cobi init: all cobi boards are busy.. waiting..\n");
+            }
+            usleep(1000); // all devices are currently busy, wait before trying again
+        }
+    } while (cobi_fd < 0);
+
     if (cobi_fd < 0) {
         perror("Failed to open device file");
         exit(2);
@@ -820,24 +835,11 @@ int cobi_init(const char* device_file)
     return 0;
 }
 
-bool cobi_established(const char* device_file)
-{
-    // TODO handle multiple cards
-    if (access(device_file, F_OK) == 0) {
-        if (Verbose_ > 0) printf("Accessing device file: %s\n", device_file);
-        return true;
-    } else {
-        fprintf(stderr, "No device found at %s\n", device_file);
-        exit(1);
-        return false;
-    }
-}
-
 void cobi_solver(
     double **qubo, int numSpins, int8_t *qubo_solution, int num_samples, int chip_delay,
     bool descend, bool use_polling
 ) {
-    if (numSpins > 46) {
+    if (numSpins != COBI_WEIGHT_MATRIX_DIM) {
         printf("Quitting.. cobi_solver called with size %d. Cannot be greater than 46.\n", numSpins);
         exit(2);
     }

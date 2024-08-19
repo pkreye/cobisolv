@@ -1053,7 +1053,6 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
 
     double final_time = omp_get_wtime() - initialStartTime;
 
-
     Qbest = &solution_list[Qindex[0]][0];
     best_energy = energy_list[Qindex[0]];
     solution_count = solution_counts[Qindex[0]];

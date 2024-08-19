@@ -74,7 +74,7 @@ typedef struct CobiData {
 /* }  CobiData;*/
 
 bool cobi_established(const char*);
-int cobi_init(const char*);
+int cobi_init(void);
 void cobi_close(void);
 void cobi_solver(double **, int, int8_t *, int, int, bool, bool);
 
