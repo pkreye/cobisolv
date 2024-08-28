@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
     bool delimitedOutput = false;
 
     // Sub sampler flags
-    bool use_dwave = false;
+    /* bool use_dwave = false; */
     bool use_cobi = false;
     bool use_rand  = false;
     bool use_null  = false;
@@ -132,9 +132,9 @@ int main(int argc, char *argv[]) {
     int opt, option_index = 0;
     char *chx;               // used as exit ptr in strto(x) functions
 
-    if (dw_established()) {  // user has set up a DW envir
-        use_dwave = true;
-    }
+    /* if (dw_established()) {  // user has set up a DW envir */
+    /*     use_dwave = true; */
+    /* } */
 
     while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:Cdz:N:P", longopts, &option_index)) != -1) {
         switch (opt) {
@@ -203,11 +203,11 @@ int main(int argc, char *argv[]) {
                     }
                 }
 
-                use_dwave = false;  // explicit setting of Submatrix says to use tabu solver, regardless of other
+                /* use_dwave = false;  // explicit setting of Submatrix says to use tabu solver, regardless of other */
                 use_cobi = false;
-                if (param.sub_size == 0) {
-                    use_dwave = true;  // except where -S 0
-                }
+                /* if (param.sub_size == 0) { */
+                /*     use_dwave = true;  // except where -S 0 */
+                /* } */
                 break;
             case 'T':
                 Target_ = strtod(optarg, (char **)NULL);  // this sets desired optimal energy
@@ -334,10 +334,10 @@ int main(int argc, char *argv[]) {
     val = (double **)malloc2D(maxNodes_, maxNodes_, sizeof(double));    // create a 2d double array
     fill_qubo(val, maxNodes_, nodes_, nNodes_, couplers_, nCouplers_);  // move to a 2d array
 
-    if (use_dwave) {  // either -S not set and DW_INTERNAL__CONNECTION env variable not NULL, or -S set to 0,
-        param.sub_size = dw_init();
-        param.sub_sampler = &dw_sub_sample;
-    }
+    /* if (use_dwave) {  // either -S not set and DW_INTERNAL__CONNECTION env variable not NULL, or -S set to 0, */
+    /*     param.sub_size = dw_init(); */
+    /*     param.sub_sampler = &dw_sub_sample; */
+    /* } */
     numsolOut_ = 0;
 
     if (use_cobi) {
@@ -401,9 +401,9 @@ int main(int argc, char *argv[]) {
     free(Qindex);
     free(val);
 
-    if (use_dwave) {
-        dw_close();
-    }
+    /* if (use_dwave) { */
+    /*     dw_close(); */
+    /* } */
 
     /* // should have been registered via atexit */
     /* if (use_cobi) { */

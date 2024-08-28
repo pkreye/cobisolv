@@ -20,8 +20,11 @@ extern "C" {
 #include <stddef.h>
 #include <stdbool.h>
 
+#define DEVICE_FILE_TEMPLATE "/dev/cobi_pcie_card%d"
+
 #define COBI_WEIGHT_MATRIX_DIM 46
 #define COBI_PROGRAM_MATRIX_DIM 52
+#define COBI_SHIL_VAL 7
 
 typedef struct CobiData {
     size_t probSize;

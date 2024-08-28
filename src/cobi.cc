@@ -369,6 +369,7 @@ void cobi_prepare_weights(
         program_array[k][program_dim-1] = 0;
 
         program_array[program_dim-2][k] = 0;
+        program_array[program_dim-1][k] = 0;
     }
 
     // add control bits in last row
@@ -382,7 +383,7 @@ void cobi_prepare_weights(
         program_array[COBI_SHIL_ROW][k]     = mapped_shil_val;
         program_array[COBI_SHIL_ROW + 1][k] = mapped_shil_val;
 
-        // columns are populated in reverse order
+        // columns
         program_array[k][COBI_SHIL_ROW - 2]     = mapped_shil_val;
         program_array[k][COBI_SHIL_ROW - 2 + 1] = mapped_shil_val;
     }
@@ -390,6 +391,7 @@ void cobi_prepare_weights(
     // populate weights
     int row;
     int col;
+    const int lfo_index = 1;
     for (int i = 0; i < weight_dim; i++) {
         if (i < COBI_SHIL_ROW - 2) {
             row = i + 2;
@@ -404,13 +406,19 @@ void cobi_prepare_weights(
                 col = program_dim - 5 - j;
             }
 
-            program_array[row][col] = hex_mapping(weights[i][j]);
+            if (i == j) {
+                int val = hex_mapping(weights[i][i] / 2);
+                program_array[lfo_index][col] = val;
+                program_array[row][lfo_index] = val;
+            } else {
+                program_array[row][col] = hex_mapping(weights[i][j]);
+            }
         }
     }
 
     // diag
     for (int i = 0; i < program_dim; i++) {
-        program_array[program_dim - 1 - i][i] = 0;
+        program_array[i][i] = 0;
     }
 }
 
@@ -450,7 +458,7 @@ void cobi_write_program(uint32_t *program, int num_words)
         exit(-9);
     }
 
-    if (Verbose_ > 0) {
+    if (Verbose_ > 3) {
         printf("Programming chip\n");
     }
 
@@ -469,7 +477,7 @@ void cobi_write_program(uint32_t *program, int num_words)
         }
     }
 
-    if (Verbose_ > 0) {
+    if (Verbose_ > 3) {
         printf("Programming completed\n");
     }
 }
@@ -523,7 +531,6 @@ void cobi_read(CobiData *cobi_data, bool use_polling)
             exit(-4);
         }
 
-
         // reverse order of bits
         if (i == 2) {
             num_read_bits = 14;
@@ -532,7 +539,8 @@ void cobi_read(CobiData *cobi_data, bool use_polling)
         }
         for (int j = 0; j < num_read_bits; j++) {
             uint32_t mask = 1 << j;
-            cobi_data->chip1_output[32 * i + j] = ((read_data & mask) >> j) << (num_read_bits - 1 - j);
+            // cobi_data->chip1_output[32 * i + j] = ((read_data & mask) >> j) << (num_read_bits - 1 - j);
+            cobi_data->chip1_output[32 * i + j] = ((read_data & mask) >> j);
         }
 
         if (Verbose_ > 2) {
@@ -567,7 +575,8 @@ void cobi_read(CobiData *cobi_data, bool use_polling)
         }
         for (int j = 0; j < num_read_bits; j++) {
             uint32_t mask = 1 << j;
-            cobi_data->chip2_output[32 * i + j] = ((read_data & mask) >> j) << (num_read_bits - 1 - j);
+            //cobi_data->chip2_output[32 * i + j] = ((read_data & mask) >> j) << (num_read_bits - 1 - j);
+            cobi_data->chip2_output[32 * i + j] = ((read_data & mask) >> j);
         }
 
         if (Verbose_ > 2) {
@@ -725,18 +734,34 @@ void cobi_norm_val(int **norm, double **ising, size_t size)
     // (y + 14) / (x - min) = 28 / (max - min)
     // y = (28 / (max - min)) * (x - min) - 14
 
+    const double upscale_factor = 1.5;
+    const int top = 14;
+    const int bot = -14;
+    const int range = top - bot;
+
     for (i = 0; i < size; i++) {
         for (j = i; j < size; j++) {
             cur_v = ising[i][j];
+
+            // linearly interpolate and upscale
+            int scaled_v = round(
+                upscale_factor * ((range * (cur_v - min) / (max - min)) - top)
+            );
+
+            // clamp
+            if (scaled_v < 0 && scaled_v < bot) {
+                scaled_v = bot;
+            } else if (scaled_v > 0 && scaled_v > top) {
+                scaled_v = top;
+            }
+
             if (cur_v == 0) {
                 norm[i][j] = 0;
                 norm[j][i] = 0;
             } else if (i == j) {
-                double scaled = (28 * (cur_v - min)/ (max - min)) - 14;
-                  norm[i][i] = scaled / 2;
+                norm[i][i] = scaled_v;
             } else {
-                double scaled = ((28 * (cur_v - min)) / (max - min)) - 14;
-                int symmetric_val = (int) round(scaled / 2);
+                int symmetric_val = round(scaled_v / 2);
                 norm[i][j] = symmetric_val;
                 norm[j][i] = symmetric_val;
             }
@@ -797,7 +822,6 @@ bool cobi_established(const char* device_file)
     }
 }
 
-#define DEVICE_FILE_TEMPLATE "/dev/cobi_pcie_card%d"
 int cobi_init()
 {
     int nextdevno = 0;
@@ -852,9 +876,13 @@ void cobi_solver(
     ising_from_qubo(ising, qubo, numSpins);
     cobi_norm_val(norm_ising, ising, numSpins);
 
-    cobi_prepare_weights(norm_ising, 46, 7, default_control_nibbles, cobi_data->programming_bits);
+    cobi_prepare_weights(
+        norm_ising, COBI_WEIGHT_MATRIX_DIM, COBI_SHIL_VAL,
+        default_control_nibbles, cobi_data->programming_bits
+    );
+
     cobi_data->serialized_program = cobi_serialize_programming_bits(
-        cobi_data->programming_bits, 52, &cobi_data->serialized_len
+        cobi_data->programming_bits, COBI_PROGRAM_MATRIX_DIM, &cobi_data->serialized_len
     );
 
     // Convert solution from QUBO to ising
