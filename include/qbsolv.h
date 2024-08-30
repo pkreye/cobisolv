@@ -50,6 +50,18 @@ typedef struct parameters_t {
 
     int64_t seed;
 
+    //tmp
+    bool use_polling;
+
+    uint16_t pid;
+    uint16_t dco;
+    uint16_t sample_delay;
+    uint16_t max_fails;
+    uint16_t rosc_time;
+    uint16_t shil_time;
+    uint16_t weight_time;
+    uint16_t sample_time;
+
 } parameters_t;
 
 // Get the default values for the optional parameters structure

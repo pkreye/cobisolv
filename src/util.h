@@ -141,6 +141,8 @@ void write_qubo(double **qubo, int nMax, const char *filename);
 // BFS Decomposer
 int bfs_get_new_sub_qubo(double **qubo, const int quboSize, const int subQuboSize, int *subQuboVars);
 
+/* int bits_to_signed_int(bool *bits, int num_bits); */
+
 #if _WIN32
 size_t getline(char **lineptr, size_t *n, FILE *stream);
 #endif

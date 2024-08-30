@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
     bool delimitedOutput = false;
 
     // Sub sampler flags
-    bool use_dwave = false;
+    /* bool use_dwave = false; */
     bool use_cobi = false;
     bool use_rand  = false;
     bool use_null  = false;
@@ -114,16 +114,29 @@ int main(int argc, char *argv[]) {
                                        {"delimitedOutput", no_argument, NULL, 'd'},
                                        {"cobiNumSamples", required_argument, NULL, 'z'},
                                        {"numOutputSolutions", required_argument, NULL, 'N'},
+
+                                       // tmp testing cobisolv-pcie
+                                       {"turnOffPolling", no_argument, NULL, 'P'},
+                                       {"pid", required_argument, NULL, 1000},
+                                       {"dco", required_argument, NULL, 1001},
+                                       {"sdelay", required_argument, NULL, 1002},
+                                       {"mfail", required_argument, NULL, 1003},
+                                       {"rosc", required_argument, NULL, 1004},
+                                       {"shil", required_argument, NULL, 1005},
+                                       {"weight", required_argument, NULL, 1006},
+                                       {"stime", required_argument, NULL, 1007},
+                                       //
+
                                        {NULL, no_argument, NULL, 0}};
 
     int opt, option_index = 0;
     char *chx;               // used as exit ptr in strto(x) functions
 
-    if (dw_established()) {  // user has set up a DW envir
-        use_dwave = true;
-    }
+    /* if (dw_established()) {  // user has set up a DW envir */
+    /*     use_dwave = true; */
+    /* } */
 
-    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:Cdz:N:", longopts, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:Cdz:N:P", longopts, &option_index)) != -1) {
         switch (opt) {
             case 'a':
                 strcpy(algo_, optarg);  // algorithm copied off of command line -a option
@@ -190,11 +203,11 @@ int main(int argc, char *argv[]) {
                     }
                 }
 
-                use_dwave = false;  // explicit setting of Submatrix says to use tabu solver, regardless of other
+                /* use_dwave = false;  // explicit setting of Submatrix says to use tabu solver, regardless of other */
                 use_cobi = false;
-                if (param.sub_size == 0) {
-                    use_dwave = true;  // except where -S 0
-                }
+                /* if (param.sub_size == 0) { */
+                /*     use_dwave = true;  // except where -S 0 */
+                /* } */
                 break;
             case 'T':
                 Target_ = strtod(optarg, (char **)NULL);  // this sets desired optimal energy
@@ -249,6 +262,46 @@ int main(int argc, char *argv[]) {
             case 'D':
                 param.cobi_descend = true;
                 break;
+
+            // tmp
+            case 'P':
+                param.use_polling = false;
+                break;
+
+            case 1000:
+                param.pid = (uint16_t) strtol(optarg, &chx, 16);
+                printf("pid %s => %d\n", optarg, param.pid);
+                break;
+            case 1001:
+                param.dco = (uint16_t)strtol(optarg, &chx, 16);
+                printf("dco %s => %d\n", optarg, param.dco);
+                break;
+            case 1002:
+                param.sample_delay = (uint16_t)strtol(optarg, &chx, 16);
+                printf("sample_delay %s => %d\n", optarg, param.sample_delay);
+                break;
+            case 1003:
+                param.max_fails = (uint16_t)strtol(optarg, &chx, 16);
+                printf("max fails %s => %d\n", optarg, param.max_fails);
+
+                break;
+            case 1004:
+                param.rosc_time = (uint16_t)strtol(optarg, &chx, 16);
+                printf("rosc time %s => %d\n", optarg, param.rosc_time);
+                break;
+            case 1005:
+                param.shil_time = (uint16_t)strtol(optarg, &chx, 16);
+                printf("shil time %s => %d\n", optarg, param.shil_time);
+                break;
+            case 1006:
+                param.weight_time = (uint16_t)strtol(optarg, &chx, 16);
+                printf("weight_time %s => %d\n", optarg, param.weight_time);
+                break;
+            case 1007:
+                param.sample_time = (uint16_t)strtol(optarg, &chx, 16);
+                printf("sample time %s => %d\n", optarg, param.sample_time);
+                break;
+
             default: /* '?' or unknown */
                 print_help();
                 exit(0);
@@ -281,29 +334,35 @@ int main(int argc, char *argv[]) {
     val = (double **)malloc2D(maxNodes_, maxNodes_, sizeof(double));    // create a 2d double array
     fill_qubo(val, maxNodes_, nodes_, nNodes_, couplers_, nCouplers_);  // move to a 2d array
 
-    if (use_dwave) {  // either -S not set and DW_INTERNAL__CONNECTION env variable not NULL, or -S set to 0,
-        param.sub_size = dw_init();
-        param.sub_sampler = &dw_sub_sample;
-    }
+    /* if (use_dwave) {  // either -S not set and DW_INTERNAL__CONNECTION env variable not NULL, or -S set to 0, */
+    /*     param.sub_size = dw_init(); */
+    /*     param.sub_sampler = &dw_sub_sample; */
+    /* } */
     numsolOut_ = 0;
 
-    if (use_cobi && cobi_established()) {
+    if (use_cobi) {
+        const char cobi_device_file[] = "/dev/cobi_pcie_card0";
+        if (!cobi_established(cobi_device_file)) {
+            fprintf(stderr, "could not find cobi board\n");
+            exit(1);
+        }
+
         if (cobi_init() != 0) {
-            printf("Init failed\n");
+            fprintf(stderr, "init failed\n");
             exit(1);
         }
 
         if (atexit(cobi_close) != 0) {
-            fprintf(stderr, "Failed to register exit function\n");
+            fprintf(stderr, "failed to register exit function\n");
             exit(1);
         }
 
         if (param.cobi_num_samples < 1) {
-            fprintf(stderr, "Number of samples must be greater than 0.\n");
+            fprintf(stderr, "number of samples must be greater than 0.\n");
             exit(2);
         }
 
-        param.sub_size = 59;
+        param.sub_size = 46;
         param.sub_sampler = &cobi_sub_sample;
         param.sub_sampler_data = &param;
     }
@@ -342,9 +401,9 @@ int main(int argc, char *argv[]) {
     free(Qindex);
     free(val);
 
-    if (use_dwave) {
-        dw_close();
-    }
+    /* if (use_dwave) { */
+    /*     dw_close(); */
+    /* } */
 
     /* // should have been registered via atexit */
     /* if (use_cobi) { */

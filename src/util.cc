@@ -905,6 +905,7 @@ size_t getline_win(char **lineptr, size_t *n, FILE *stream) {
 
     return p - bufptr - 1;
 }
+
 #endif
 
 #ifdef __cplusplus

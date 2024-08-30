@@ -19,51 +19,74 @@ extern "C" {
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <pigpio.h>
 
-int usleep(long usecs);
+#define DEVICE_FILE_TEMPLATE "/dev/cobi_pcie_card%d"
 
-#define GPIO_WRITE(pin, val)                                            \
-    if (gpioWrite(pin, val) != 0) {                                     \
-        printf("\n ERROR: bad gpio write: %s(%s.%d)\n\n", __FUNCTION__, __FILE__, __LINE__); \
-        exit(9);                                                        \
-    }
-
-
-#define GPIO_WRITE_DELAY(pin, val, delay)                               \
-    if (gpioWrite(pin, val) != 0) {                                     \
-        printf("\n ERROR: bad gpio write: %s(%s.%d)\n\n", __FUNCTION__, __FILE__, __LINE__); \
-        exit(9);                                                        \
-    }                                                                   \
-    usleep(delay);
-
+#define COBI_WEIGHT_MATRIX_DIM 46
+#define COBI_PROGRAM_MATRIX_DIM 52
+#define COBI_SHIL_VAL 7
 
 typedef struct CobiData {
     size_t probSize;
     size_t w;
     size_t h;
     int **programming_bits;
-    uint8_t *chip2_test;
+    uint32_t *serialized_program;
+    int serialized_len;
+
+    bool *chip1_output;
+    int chip1_problem_id;
+    int *chip1_spins;
+    int chip1_energy;
+    int chip1_core_id;
+
+    bool *chip2_output;
+    int chip2_problem_id;
+    int *chip2_spins;
+    int chip2_energy;
+    int chip2_core_id;
+
+    uint32_t process_time;
+
     int num_samples;
-    int *spins;
     int64_t chip_delay;
     bool descend;
 
     int sample_test_count;
-    int *prev_spins;
-    /* int **graph_arr; */
-    /* uint8_t *samples; */
 } CobiData;
 
-/* void cobi_from_qubo(double **qubo, size_t, double **cobi); */
+/* typedef struct CobiData { */
+/*     size_t probSize; */
+/*     size_t w; */
+/*     size_t h; */
+/*     int **programming_bits; */
 
-bool cobi_established(void);
+/*     uint8_t *chip1_output; */
+/*     uint8_t *chip2_output; */
 
+/*     int *chip1_spins; */
+/*     int *chip2_spins; */
+
+/*     uint32_t process_time; */
+
+/*     int num_samples; */
+/*     int64_t chip_delay; */
+/*     bool descend; */
+
+/*     int sample_test_count; */
+/* }  CobiData;*/
+
+bool cobi_established(const char*);
 int cobi_init(void);
-
 void cobi_close(void);
+void cobi_solver(double **, int, int8_t *, int, int, bool, bool);
 
-void cobi_solver(double **, int, int8_t *, int, int, bool);
+
+
+// For testing: to be removed
+    void __cobi_print_write_time();
+    void __cobi_print_read_time();
+    void __cobi_print_subprob_zero_count();
 
 #ifdef __cplusplus
 }

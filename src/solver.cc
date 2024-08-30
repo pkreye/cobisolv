@@ -617,7 +617,10 @@ void cobi_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, voi
 {
     parameters_t *params = (parameters_t*) sub_sampler_data;
 
-    cobi_solver(sub_qubo, subMatrix, sub_solution, params->cobi_num_samples, params->cobi_delay, false);
+    cobi_solver(sub_qubo, subMatrix, sub_solution,
+                params->cobi_num_samples, params->cobi_delay, false,
+                params->use_polling
+               );
 
     if (params->cobi_descend) {
         int64_t sub_bit_flips = 0;
@@ -645,7 +648,7 @@ parameters_t default_parameters() {
     param.num_output_solutions = 1;
     param.repeats = 50;
     param.sub_sampler = &tabu_sub_sample;
-    param.sub_size = 47;
+    param.sub_size = 46;
     param.sub_sampler_data = NULL;
     param.preSearchPassFactor = 0;
     param.globalSearchPassFactor = 0;
@@ -653,6 +656,19 @@ parameters_t default_parameters() {
     param.cobi_delay = 100;
     param.cobi_num_samples = 10;
     param.cobi_descend = false;
+
+    // tmp
+    param.use_polling = true;
+
+    param.pid = 0xFF;
+    param.dco =  0x5;
+    param.sample_delay = 0xFF;
+    param.max_fails = 0x1F;
+    param.rosc_time = 0x3;
+    param.shil_time = 0xF;
+    param.weight_time = 0x3;
+    param.sample_time = 0xFD;
+
     return param;
 }
 
@@ -741,7 +757,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
     randomize_solution(tabu_solution, qubo_size);
     for (int i = 0; i < qubo_size; i++) {
         index[i] = i;  // initial index to 0,1,2,...qubo_size
-        solution[i] = 0;
+        solution[i] = tabu_solution[i];
     }
 
     int l = 0, DwaveQubo = 0;
@@ -1037,14 +1053,12 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
 
     double final_time = omp_get_wtime() - initialStartTime;
 
-
     Qbest = &solution_list[Qindex[0]][0];
     best_energy = energy_list[Qindex[0]];
     solution_count = solution_counts[Qindex[0]];
 
     // all done print results if needed and free allocated arrays
     if (WriteMatrix_) print_solution_and_qubo(Qbest, qubo_size, qubo);
-
 
     // If `param->output_solutions` is 0 print all unique solutions
     int num_output_solutions = param->num_output_solutions;
@@ -1064,6 +1078,13 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
             qubo_size, solution_list, energy_list, sign, solution_counts, Qindex,
             num_output_solutions, numPartCalls, final_time, subQuboTime, param
         );
+    }
+
+    // Temporary output for debugging
+    if (Verbose_ > 0) {
+        __cobi_print_write_time();
+        __cobi_print_read_time();
+        __cobi_print_subprob_zero_count();
     }
 
     free(solution);
