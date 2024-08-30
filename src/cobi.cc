@@ -229,7 +229,7 @@ void cobi_reset()
 // }
 
 
-CobiData *cobi_data_mk(size_t num_spins, int chip_delay, bool descend)
+CobiData *cobi_data_mk(size_t num_spins, bool descend)
 {
     CobiData *d = (CobiData*)malloc(sizeof(CobiData));
     d->probSize = num_spins;
@@ -251,7 +251,6 @@ CobiData *cobi_data_mk(size_t num_spins, int chip_delay, bool descend)
     d->chip2_core_id = 0;
 
     d->num_samples = 1;
-    d->chip_delay = chip_delay;
     d->descend = descend;
 
     return d;
@@ -860,7 +859,7 @@ int cobi_init()
 }
 
 void cobi_solver(
-    double **qubo, int numSpins, int8_t *qubo_solution, int num_samples, int chip_delay,
+    double **qubo, int numSpins, int8_t *qubo_solution, int num_samples,
     bool descend, bool use_polling
 ) {
     if (numSpins != COBI_WEIGHT_MATRIX_DIM) {
@@ -868,7 +867,7 @@ void cobi_solver(
         exit(2);
     }
 
-    CobiData *cobi_data = cobi_data_mk(numSpins, chip_delay, descend);
+    CobiData *cobi_data = cobi_data_mk(numSpins, descend);
     int8_t *ising_solution = (int8_t*)malloc(sizeof(int8_t) * numSpins);
     double **ising = _malloc_double_array2d(numSpins, numSpins);
     int **norm_ising = _malloc_array2d(numSpins, numSpins);

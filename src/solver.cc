@@ -617,9 +617,8 @@ void cobi_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, voi
 {
     parameters_t *params = (parameters_t*) sub_sampler_data;
 
-    cobi_solver(sub_qubo, subMatrix, sub_solution,
-                params->cobi_num_samples, params->cobi_delay, false,
-                params->use_polling
+    cobi_solver(sub_qubo, subMatrix, sub_solution, params->cobi_num_samples,
+                false, params->use_polling
                );
 
     if (params->cobi_descend) {

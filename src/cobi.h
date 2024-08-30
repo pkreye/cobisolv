@@ -49,7 +49,6 @@ typedef struct CobiData {
     uint32_t process_time;
 
     int num_samples;
-    int64_t chip_delay;
     bool descend;
 
     int sample_test_count;
@@ -79,7 +78,7 @@ typedef struct CobiData {
 bool cobi_established(const char*);
 int cobi_init(void);
 void cobi_close(void);
-void cobi_solver(double **, int, int8_t *, int, int, bool, bool);
+void cobi_solver(double **, int, int8_t *, int, bool, bool);
 
 
 
