@@ -530,7 +530,6 @@ void cobi_read(CobiData *cobi_data, bool use_polling)
             exit(-4);
         }
 
-        // reverse order of bits
         if (i == 2) {
             num_read_bits = 14;
         } else {
@@ -566,7 +565,6 @@ void cobi_read(CobiData *cobi_data, bool use_polling)
             exit(-6);
         }
 
-        // reverse order of bits
         if (i == 2) {
             num_read_bits = 14;
         } else {
@@ -646,7 +644,7 @@ void print_int_array2d(int **a, int w, int h)
 }
 
 int *cobi_test_multi_times(
-    CobiData *cobi_data, int sample_times, int size, int8_t *solution, bool use_polling
+    CobiData *cobi_data, int sample_times, int8_t *solution, bool use_polling
 ) {
     int times = 0;
     int *all_results = _malloc_array1d(sample_times);
@@ -673,7 +671,7 @@ int *cobi_test_multi_times(
 
         all_results[times] = res;
 
-        // Temporarily use 0xFF as the every problem id to verify we are getting results
+        // Temporarily use 0xFF as every problem id to verify we are getting results
         if (res == 0 && cobi_data->chip1_problem_id != 0xFF) {
             subprob_zero_count++;
             if (Verbose_ > 0) {
@@ -681,7 +679,7 @@ int *cobi_test_multi_times(
                 print_int_array2d(cobi_data->programming_bits, 52, 52);
 
                 for (int i = 0; i < cobi_data->serialized_len; i++) {
-                    printf("0X%08X,", cobi_data->serialized_program);
+                    printf("0X%08X,", *cobi_data->serialized_program);
                     if (i % 7  == 6) {
                         printf("\n");
                     }
@@ -888,7 +886,7 @@ void cobi_solver(
     ising_solution_from_qubo_solution(ising_solution, qubo_solution, numSpins);
 
     int *results = cobi_test_multi_times(
-        cobi_data, num_samples, numSpins, ising_solution, use_polling
+        cobi_data, num_samples, ising_solution, use_polling
     );
 
     // Convert ising solution back to QUBO form

@@ -21,7 +21,6 @@
 	#include <getopt.h>
 #endif // _WIN32
 
-#include "dwsolv.h"
 #include "cobi.h"
 #include "qbsolv.h"
 #include "readqubo.h"
@@ -65,7 +64,6 @@ int main(int argc, char *argv[]) {
     bool delimitedOutput = false;
 
     // Sub sampler flags
-    /* bool use_dwave = false; */
     bool use_cobi = false;
     bool use_rand  = false;
     bool use_null  = false;
@@ -131,10 +129,6 @@ int main(int argc, char *argv[]) {
 
     int opt, option_index = 0;
     char *chx;               // used as exit ptr in strto(x) functions
-
-    /* if (dw_established()) {  // user has set up a DW envir */
-    /*     use_dwave = true; */
-    /* } */
 
     while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:Cdz:N:P", longopts, &option_index)) != -1) {
         switch (opt) {
@@ -203,10 +197,9 @@ int main(int argc, char *argv[]) {
                     }
                 }
 
-                /* use_dwave = false;  // explicit setting of Submatrix says to use tabu solver, regardless of other */
                 use_cobi = false;
                 /* if (param.sub_size == 0) { */
-                /*     use_dwave = true;  // except where -S 0 */
+                /*     use_cobi = true;  // except where -S 0 */
                 /* } */
                 break;
             case 'T':
@@ -334,10 +327,6 @@ int main(int argc, char *argv[]) {
     val = (double **)malloc2D(maxNodes_, maxNodes_, sizeof(double));    // create a 2d double array
     fill_qubo(val, maxNodes_, nodes_, nNodes_, couplers_, nCouplers_);  // move to a 2d array
 
-    /* if (use_dwave) {  // either -S not set and DW_INTERNAL__CONNECTION env variable not NULL, or -S set to 0, */
-    /*     param.sub_size = dw_init(); */
-    /*     param.sub_sampler = &dw_sub_sample; */
-    /* } */
     numsolOut_ = 0;
 
     if (use_cobi) {
@@ -400,10 +389,6 @@ int main(int argc, char *argv[]) {
     free(solution_counts);
     free(Qindex);
     free(val);
-
-    /* if (use_dwave) { */
-    /*     dw_close(); */
-    /* } */
 
     /* // should have been registered via atexit */
     /* if (use_cobi) { */
@@ -485,12 +470,8 @@ void print_help(void) {
            "\t-S subproblemSize \n"
            "\t\tThis optional argument indicates the size of the sub-\n"
            "\t\tproblems into which the QUBO will be decomposed.  A \n"
-           "\t\t\"-S 0\" or \"-S\" argument not present indicates to use the\n"
-           "\t\tsize specified in the embedding file found in the workspace\n"
-           "\t\tset up by DW.  If a DW environment has not been established,\n"
-           "\t\tthe value will default to (47) and will use the tabu solver\n"
-           "\t\tfor subproblem solutions.  If a value is specified, cobisolv uses\n"
-           "\t\tthat value to create subproblem and solve with the tabu solver. \n"
+           "\t\t\"-S 0\" or \"-S\" argument not present indicates to\n"
+           "\t\tuse the default value (47) for subproblem sizes.\n"
            "\t-s  solutionIn   \n"
            "\t\tIf present, this optional argument is a filename that is\n"
            "\t\tin the format of the first 2 records of the output solution file,\n"

@@ -13,7 +13,6 @@
  limitations under the License.
 */
 
-#include "dwsolv.h"
 #include "extern.h"
 #include "cobi.h"
 #include "macros.h"
@@ -478,7 +477,7 @@ void reduce(int *Icompress, double **qubo, uint sub_qubo_size, uint qubo_size, d
 }
 
 // solv_submatrix() performs QUBO optimization on a subregion.
-// In this function the subregion is optimized using tabu_search() rather than using the D-Wave hardware.
+// In this function the subregion is optimized using tabu_search()
 //
 // @param[in,out] solution inputs a current solution and returns the best solution found
 // @param[out] best stores the best solution found during the algorithm
@@ -564,15 +563,6 @@ int reduce_solve_projection(int *Icompress, double **qubo, int qubo_size, int su
     free(sub_qubo);
     return change;
 }
-
-void dw_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *sub_sampler_data) {
-    dw_solver(sub_qubo, subMatrix, sub_solution);
-    int64_t sub_bit_flips = 0;  //  run a local search with higher precision than the Dwave
-    double *flip_cost = (double *)malloc(sizeof(double) * subMatrix);
-    local_search(sub_solution, subMatrix, sub_qubo, flip_cost, &sub_bit_flips);
-    free(flip_cost);
-}
-
 
 void print_array2d(double **a, int w, int h)
 {
@@ -759,7 +749,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
         solution[i] = tabu_solution[i];
     }
 
-    int l = 0, DwaveQubo = 0;
+    int l = 0;
     double sign = findMax_ ? 1.0 : -1.0;
     struct sol_man_rslt result;
 
@@ -828,7 +818,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
         printf(" V Starting outer loop =%lf iterations %" LONGFORMAT "\n", best_energy * sign, bit_flips);
     }
 
-    // starting main search loop Partition ( run parts on tabu or Dwave ) --> Tabu rinse and repeat
+    // starting main search loop Partition ( run parts on tabu or cobi ) --> Tabu rinse and repeat
     short RepeatPass = 0, NoProgress = 0;
     short ContinueWhile = false;
     if (TargetSet_) {
@@ -844,8 +834,6 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
             ContinueWhile = false;
         }
     }
-
-    DwaveQubo = 0;
 
     // outer loop begin
     while (ContinueWhile) {
@@ -923,7 +911,6 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                         // {
                         change = change + t_change;
                         numPartCalls++;
-                        DwaveQubo++;
                         // }
                         // end critical region
                     }

@@ -67,9 +67,6 @@ typedef struct parameters_t {
 // Get the default values for the optional parameters structure
 parameters_t default_parameters(void);
 
-// Callback for `solve` to use one of the `dw` calling methods
-void dw_sub_sample(double** sub_qubo, int subMatrix, int8_t* sub_solution, void*);
-
 // Callback for `solve` to use tabu on subproblems
 void tabu_sub_sample(double** sub_qubo, int subMatrix, int8_t* sub_solution, void*);
 

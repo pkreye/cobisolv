@@ -237,10 +237,8 @@ void print_output(
     int *index, int num_solutions, long num_subprobs,
     double total_time, double subprob_time, parameters_t *param
 ) {
-    int i;
-
-    fprintf(outFile_, "Initial pass factor: %ld\n", param->preSearchPassFactor);
-    fprintf(outFile_, "Global pass factor: %ld\n", param->globalSearchPassFactor);
+    fprintf(outFile_, "Initial pass factor: %d\n", param->preSearchPassFactor);
+    fprintf(outFile_, "Global pass factor: %d\n", param->globalSearchPassFactor);
     fprintf(outFile_, "%ld Number of Partitioned calls \n", num_subprobs);
     fprintf(outFile_, "%8.5f seconds solving sub-problems\n", subprob_time);
     fprintf(outFile_, "%8.5f seconds of total run time\n", total_time);

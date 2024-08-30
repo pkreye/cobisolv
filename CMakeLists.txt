@@ -39,10 +39,10 @@ include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/include
 ${PROJECT_SOURCE_DIR}/cmd)
 
 # Object Library
-add_library(solver OBJECT src/solver.cc src/util.cc src/dwsolv.cc src/cobi.cc)
+add_library(solver OBJECT src/solver.cc src/util.cc src/cobi.cc)
 
 # static library
-add_library(libcobisolv STATIC $<TARGET_OBJECTS:solver> src/util.cc src/dwsolv.cc src/cobi.cc)
+add_library(libcobisolv STATIC $<TARGET_OBJECTS:solver> src/util.cc src/cobi.cc)
 set_target_properties(libcobisolv PROPERTIES PREFIX "")
 
 if(COBISOLV_BUILD_CMD)
