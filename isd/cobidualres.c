@@ -679,7 +679,7 @@ void solveQ(nums* obj){
             weights[i][j] = obj->Q[i][j];
         }
     }
-    
+
     cobi_prepare_weights(weights, 46, 7, default_control_nibbles,
                          cbd->programming_bits
                         );
