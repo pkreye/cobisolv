@@ -44,9 +44,14 @@ typedef struct parameters_t {
     int32_t preSearchPassFactor;
     int32_t globalSearchPassFactor;
 
+    int num_sub_prob_threads;
+
+
+    bool use_cobi;
     int cobi_delay;
     int cobi_num_samples;
     bool cobi_descend;
+    bool cobi_parallel_repeat;
 
     int64_t seed;
 
