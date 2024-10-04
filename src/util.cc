@@ -795,41 +795,41 @@ bool _int_array_memb(int *a, int len, int test) {
  * Once we have explored `subQuboSize` number of vertices we have enough to create the new sub problem,
  * we are done.
  */
-int bfs_get_new_sub_qubo(double **qubo, const int quboSize, const int subQuboSize, int *subQuboVars)
+int bfs_get_new_sub_qubo(double **qubo, const int qubo_size, const int sub_qubo_size, int *sub_vars)
 {
     int curVertex;
-    int *queue = subQuboVars;
+    int *queue = sub_vars;
     int queueBot = 0;
     int queueTop = 0;
     int *seen;
-    if (GETMEM(seen, int, quboSize) == NULL) BADMALLOC
+    if (GETMEM(seen, int, qubo_size) == NULL) BADMALLOC
 
-    memset(seen, 0, quboSize*sizeof(int));
+    memset(seen, 0, qubo_size*sizeof(int));
 
-    queue[queueTop++] = rand() % quboSize;
+    queue[queueTop++] = rand() % qubo_size;
     seen[queue[0]] = 1;
 
-    while (queueTop < subQuboSize) {
+    while (queueTop < sub_qubo_size) {
         if (queueBot == queueTop) {
             // If we have exhausted the current connected components but do not have enough
             // variables, randomize until we find something new.
             while (seen[curVertex]) {
-                curVertex = rand() % quboSize;
+                curVertex = rand() % qubo_size;
             }
             queue[queueTop++] = curVertex;
             seen[curVertex] = 1;
 
-            if (queueTop >= subQuboSize) break;
+            if (queueTop >= sub_qubo_size) break;
         }
 
         curVertex = queue[queueBot++];
 
-        for (int j = curVertex + 1; j < quboSize; j++) {
+        for (int j = curVertex + 1; j < qubo_size; j++) {
             if (qubo[curVertex][j] != 0 && !seen[j]) {
                 queue[queueTop++] = j;
                 seen[j] = 1;
 
-                if (queueTop >= subQuboSize) break;
+                if (queueTop >= sub_qubo_size) break;
             }
         }
     }
@@ -838,6 +838,57 @@ int bfs_get_new_sub_qubo(double **qubo, const int quboSize, const int subQuboSiz
 
     return queueTop;
 }
+
+// TODO finish for parallel solver
+// Get `num_sub_qubos` disjoint sub problems via bfs decomposition
+
+// int bfs_get_sub_qubos(
+//     double **qubo, int qubo_size, int sub_qubo_size, int num_sub_qubos, int **sub_qubos
+// ) {
+//     int curVertex;
+//     int *queue = sub_vars;
+//     int queueBot = 0;
+//     int queueTop = 0;
+//     int *seen;
+//     if (GETMEM(seen, int, qubo_size) == NULL) BADMALLOC
+
+//     memset(seen, 0, qubo_size*sizeof(int));
+
+//     queue[queueTop++] = rand() % qubo_size;
+//     seen[queue[0]] = 1;
+
+//     while (queueTop < sub_qubo_size) {
+//         if (queueBot == queueTop) {
+//             // If we have exhausted the current connected components but do not have enough
+//             // variables, randomize until we find something new.
+//             while (seen[curVertex]) {
+//                 curVertex = rand() % qubo_size;
+//             }
+//             queue[queueTop++] = curVertex;
+//             seen[curVertex] = 1;
+
+//             if (queueTop >= sub_qubo_size) break;
+//         }
+
+//         curVertex = queue[queueBot++];
+
+//         for (int j = curVertex + 1; j < qubo_size; j++) {
+//             if (qubo[curVertex][j] != 0 && !seen[j]) {
+//                 queue[queueTop++] = j;
+//                 seen[j] = 1;
+
+//                 if (queueTop >= sub_qubo_size) break;
+//             }
+//         }
+//     }
+
+//     free(seen);
+
+//     return queueTop;
+// }
+
+
+
 
 /*double roundit(double value, int digits)
 {

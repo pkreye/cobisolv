@@ -581,7 +581,7 @@ void tabu_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, voi
     double *flip_cost = (double *)malloc(sizeof(double) * subMatrix);
     int8_t *current_best = (int8_t *)malloc(sizeof(int8_t) * subMatrix);
 
-    if (Verbose_ > 0) {
+    if (Verbose_ > 1) {
         print_array2d(sub_qubo, subMatrix, subMatrix);
     }
 
@@ -605,13 +605,16 @@ void tabu_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, voi
 
 void cobi_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, void *sub_sampler_data)
 {
-    parameters_t *params = (parameters_t*) sub_sampler_data;
+    CobiSubSamplerParams *sampler_params = (CobiSubSamplerParams*) sub_sampler_data;
 
-    cobi_solver(sub_qubo, subMatrix, sub_solution, params->cobi_num_samples,
-                false, params->use_polling
-               );
+    cobi_solver(
+        sampler_params->device_id,
+        sub_qubo, subMatrix, sub_solution,
+        sampler_params->num_samples,
+        sampler_params->use_polling
+    );
 
-    if (params->cobi_descend) {
+    if (sampler_params->descend) {
         int64_t sub_bit_flips = 0;
         double *flip_cost = (double *)malloc(sizeof(double) * subMatrix);
         local_search(sub_solution, subMatrix, sub_qubo, flip_cost, &sub_bit_flips);
@@ -642,9 +645,13 @@ parameters_t default_parameters() {
     param.preSearchPassFactor = 0;
     param.globalSearchPassFactor = 0;
     param.seed = 17932241798878;
+
+    param.use_cobi = false;
     param.cobi_delay = 100;
     param.cobi_num_samples = 10;
     param.cobi_descend = false;
+    param.num_sub_prob_threads = 1;
+    param.cobi_parallel_repeat = false;
 
     // tmp
     param.use_polling = true;
@@ -874,48 +881,86 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
             } else {
                 int change = 0;
 
+                // // TODO finish non-uniform subprob parallel support
+                // if (param->cobi_parallel_repeat == false) {
+                //     printf("use cobi_parallel_repeat option.. for now\n");
+                //     exit(1);
+                // }
+
+                //
+                int8_t **batch_solutions = (int8_t **)malloc2D(param->num_sub_prob_threads, qubo_size, sizeof(int8_t));
+                for (int j = 0; j < param->num_sub_prob_threads; j++) {
+                    for (int i = 0; i < qubo_size; i++) {
+                        batch_solutions[j][i] = solution[i];
+                    }
+                }
+
+                int *Icompress;
+                if (GETMEM(Icompress, int, subMatrix) == NULL) BADMALLOC
+
                 startTime = omp_get_wtime();
 
-                 {  // scope of parallel region
-                    int t_change = 0;
-                    int *Icompress;
-                    int subQuboSize = subMatrix;
-                    if (GETMEM(Icompress, int, subMatrix) == NULL) BADMALLOC // TODO ? consider optimization via allocating outside of loop
+                // {
 
-                    for (l = 0; l < l_max; l += subMatrix) {
-                        if (algo_[0] == 'b') {
-                            subQuboSize = bfs_get_new_sub_qubo(qubo, qubo_size, subMatrix, Icompress);
-                            index_sort(Icompress, subMatrix, true);  // sort it for effective reduction
-                        } else if (algo_[0] == 'o') {
-                            if (Verbose_ > 3) printf("Submatrix starting at backbone %d\n", l);
+                for (l = 0; l < l_max; l += subMatrix) {
+                    if (algo_[0] == 'b') {
+                        bfs_get_new_sub_qubo(qubo, qubo_size, subMatrix, Icompress);
+                        index_sort(Icompress, subMatrix, true);  // sort it for effective reduction
+                    } else if (algo_[0] == 'o') {
+                        if (Verbose_ > 3) printf("Submatrix starting at backbone %d\n", l);
 
-                            for (int i = l, j = 0; i < l + subMatrix; i++) {
-                                Icompress[j++] = index[i];  // create compression index
-                            }
-                            index_sort(Icompress, subMatrix, true);  // sort it for effective reduction
-
-                            // coarsen and reduce the problem
-                        } else if (algo_[0] == 'd') {
-                            if (Verbose_ > 3) printf("Submatrix starting at backbone %d\n", l);
-                            int i_strt = l;
-                            if (l + subMatrix > len_index)
-                                i_strt = len_index - subMatrix - 1;  // cover all of len_index by backup on last pass
-                            for (int i = i_strt, j = 0; i < i_strt + subMatrix; i++) {
-                                Icompress[j++] = Pcompress[i];  // create compression index
-                            }
+                        for (int i = l, j = 0; i < l + subMatrix; i++) {
+                            Icompress[j++] = index[i];  // create compression index
                         }
-                        t_change = reduce_solve_projection(Icompress, qubo, qubo_size, subQuboSize, solution, param);
+                        index_sort(Icompress, subMatrix, true);  // sort it for effective reduction
 
-                        // do the following in a critical region
-                        // #pragma omp critical
-                        // {
-                        change = change + t_change;
-                        numPartCalls++;
-                        // }
-                        // end critical region
+                        // coarsen and reduce the problem
+                    } else if (algo_[0] == 'd') {
+                        if (Verbose_ > 3) printf("Submatrix starting at backbone %d\n", l);
+                        int i_strt = l;
+                        if (l + subMatrix > len_index)
+                            i_strt = len_index - subMatrix - 1;  // cover all of len_index by backup on last pass
+                        for (int i = i_strt, j = 0; i < i_strt + subMatrix; i++) {
+                            Icompress[j++] = Pcompress[i];  // create compression index
+                        }
                     }
-                    free(Icompress);
-                 }
+
+                    #pragma omp parallel for
+                    for (int device_num = 0; device_num < param->num_sub_prob_threads; device_num++) {
+                        int t_change = 0;
+
+                        if (Verbose_ > 0) {
+                            printf("par loop: %d %d\n", device_num, omp_get_thread_num());
+                        }
+
+                        if (param->use_cobi) {
+                            CobiSubSamplerParams *cobi_sampler_params;
+                            if (GETMEM(cobi_sampler_params, CobiSubSamplerParams, 1) == NULL) BADMALLOC
+
+                            cobi_sampler_params->device_id = device_num;
+                            cobi_sampler_params->num_samples = param->cobi_num_samples;
+                            cobi_sampler_params->use_polling = param->use_polling;
+                            cobi_sampler_params->descend = param->cobi_descend;
+
+                            param->sub_sampler_data = cobi_sampler_params;
+
+                            t_change = reduce_solve_projection(Icompress, qubo, qubo_size, subMatrix, batch_solutions[device_num], param);
+
+                            free(cobi_sampler_params);
+                        } else {
+                            t_change = reduce_solve_projection(Icompress, qubo, qubo_size, subMatrix, batch_solutions[device_num], param);
+                        }
+
+                        #pragma omp critical
+                        {
+                            change = change + t_change;
+                        }
+                    }
+
+                    numPartCalls++;
+                }
+                free(Icompress);
+                // }
 
                 subQuboTime += omp_get_wtime() - startTime;
 
@@ -940,6 +985,23 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
 
                 // completed submatrix passes
                 if (Verbose_ > 1) printf("\n");
+
+                // evaluate batch results and retain the best solution
+                double best_batch_energy = evaluate(batch_solutions[0], qubo_size, (const double **)qubo, flip_cost);
+                int best_batch_index = 0;
+                for (int device_num = 1; device_num < param->num_sub_prob_threads; device_num++) {
+                    double cur_energy = evaluate(batch_solutions[device_num], qubo_size, (const double **)qubo, flip_cost);
+                    if (cur_energy > best_batch_energy) {
+                        best_batch_index = device_num;
+                        best_batch_energy = cur_energy;
+                    }
+                }
+
+                for (int i = 0; i < qubo_size; i++) {
+                    solution[i] = batch_solutions[best_batch_index][i];
+                }
+
+                free(batch_solutions);
             }
         }
         if (Verbose_ > 1) {
@@ -982,7 +1044,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                 DLT;
                 printf(" IMPROVEMENT; RepeatPass set to %d\n", RepeatPass);
             }
-            if (Verbose_ > 0) {
+            if (Verbose_ > 1) {
                 print_solution(qubo_size, Qbest, solution_count, best_energy * sign);
             }
         } else if (result.code == DUPLICATE_ENERGY ||
@@ -995,7 +1057,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                 NoProgress++;
             }
             if (result.code == DUPLICATE_HIGHEST_ENERGY && result.count == 1) {
-                if (Verbose_ > 0) {
+                if (Verbose_ > 1) {
                     print_solution(qubo_size, Qbest, solution_count, best_energy * sign);
                 }
             }

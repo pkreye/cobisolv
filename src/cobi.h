@@ -26,6 +26,14 @@ extern "C" {
 #define COBI_PROGRAM_MATRIX_DIM 52
 #define COBI_SHIL_VAL 7
 
+typedef struct CobiOutput {
+    bool *raw_bits;
+    int problem_id;
+    int *spins;
+    int energy;
+    int core_id;
+} CobiOutput;
+
 typedef struct CobiData {
     size_t probSize;
     size_t w;
@@ -48,11 +56,15 @@ typedef struct CobiData {
 
     uint32_t process_time;
 
-    int num_samples;
-    bool descend;
-
     int sample_test_count;
 } CobiData;
+
+typedef struct CobiSubSamplerParams {
+    int device_id;
+    int num_samples;
+    bool use_polling;
+    bool descend;
+} CobiSubSamplerParams;
 
 /* typedef struct CobiData { */
 /*     size_t probSize; */
@@ -76,9 +88,9 @@ typedef struct CobiData {
 /* }  CobiData;*/
 
 bool cobi_established(const char*);
-int cobi_init(void);
+int cobi_init(int);
 void cobi_close(void);
-void cobi_solver(double **, int, int8_t *, int, bool, bool);
+void cobi_solver(int cobi_device_id, double **, int, int8_t *, int, bool);
 
 
 

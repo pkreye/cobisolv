@@ -58,7 +58,8 @@ void __cobi_print_subprob_zero_count()
 #define COBI_CHIP_OUTPUT_LEN 78
 #define COBI_CONTROL_NIBBLES_LEN 52
 
-static int cobi_fd = -1;
+static int *cobi_fds;
+static int cobi_num_open = 0;
 
 uint8_t default_control_nibbles[COBI_CONTROL_NIBBLES_LEN] = {
     0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA,
@@ -201,17 +202,17 @@ void _free_array2d(void **a, int w) {
 }
 
 // FPGA Control interface
-void cobi_reset()
+void cobi_reset(int cobi_id)
 {
     pci_write_data write_data;
-    // TODO how to reset via pci driver?
+
     write_data.offset = 8 * sizeof(uint32_t);
     write_data.value = 0x00000000;    // initialize axi interface control
     if (Verbose_ > 2) {
         printf("Initialize cobi chips interface controller\n");
     }
 
-    if (write(cobi_fd, &write_data, sizeof(write_data)) != sizeof(write_data)) {
+    if (write(cobi_fds[cobi_id], &write_data, sizeof(write_data)) != sizeof(write_data)) {
         perror("Failed to write to device");
         exit(3);
     }
@@ -229,7 +230,7 @@ void cobi_reset()
 // }
 
 
-CobiData *cobi_data_mk(size_t num_spins, bool descend)
+CobiData *cobi_data_mk(size_t num_spins)
 {
     CobiData *d = (CobiData*)malloc(sizeof(CobiData));
     d->probSize = num_spins;
@@ -249,9 +250,6 @@ CobiData *cobi_data_mk(size_t num_spins, bool descend)
     d->chip2_problem_id = 0;
     d->chip2_energy = 0;
     d->chip2_core_id = 0;
-
-    d->num_samples = 1;
-    d->descend = descend;
 
     return d;
 }
@@ -421,7 +419,7 @@ void cobi_prepare_weights(
     }
 }
 
-void cobi_wait_while_busy()
+void cobi_wait_while_busy(int cobi_id)
 {
     uint32_t read_data;
     off_t read_offset;
@@ -430,13 +428,13 @@ void cobi_wait_while_busy()
         read_offset = 10 * sizeof(uint32_t); // Example read offset
 
         // Write read offset to device
-        if (write(cobi_fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+        if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
             perror("Failed to set read offset in device");
             exit(2);
         }
 
         // Read data from device
-        if (read(cobi_fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
+        if (read(cobi_fds[cobi_id], &read_data, sizeof(read_data)) != sizeof(read_data)) {
             perror("Failed to read from device");
             exit(2);
         }
@@ -448,7 +446,7 @@ void cobi_wait_while_busy()
 }
 
 #define RAW_BYTE_COUNT 338
-void cobi_write_program(uint32_t *program, int num_words)
+void cobi_write_program(int cobi_id, uint32_t *program, int num_words)
 {
     pci_write_data write_data;
 
@@ -461,17 +459,19 @@ void cobi_write_program(uint32_t *program, int num_words)
         printf("Programming chip\n");
     }
 
-    cobi_wait_while_busy();
+    cobi_wait_while_busy(cobi_id);
 
     /* /\* Perform write operations *\/ */
+    #pragma omp critical
     for (int i = 0; i < RAW_BYTE_COUNT; ++i) {
         write_data.offset = 9 * sizeof(uint32_t);
         write_data.value = program[i];    // data to write
         write_data.value = ((write_data.value & 0xFFFF0000) >> 16) |
             ((write_data.value & 0x0000FFFF) << 16);
-        if (write(cobi_fd, &write_data, sizeof(write_data)) != sizeof(write_data)) {
+
+        if (write(cobi_fds[cobi_id], &write_data, sizeof(write_data)) != sizeof(write_data)) {
             perror("Failed to write to device");
-            close(cobi_fd);
+            close(cobi_fds[cobi_id]);
             exit(-10);
         }
     }
@@ -502,14 +502,14 @@ int bits_to_signed_int(bool *bits, unsigned int num_bits)
     /* return (n & s - 1) - (n & s) */
 }
 
-void cobi_read(CobiData *cobi_data, bool use_polling)
+void cobi_read(int cobi_id, CobiData *cobi_data, bool use_polling)
 {
     uint32_t read_data;
     off_t read_offset;
     int num_read_bits = 32;
 
     if (use_polling) {
-        cobi_wait_while_busy();
+        cobi_wait_while_busy(cobi_id);
     } else {
         usleep(350);
     }
@@ -519,13 +519,13 @@ void cobi_read(CobiData *cobi_data, bool use_polling)
         read_offset = (4 + i) * sizeof(uint32_t);
 
         // Write read offset to device
-        if (write(cobi_fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+        if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
             perror("Failed to set read offset in device");
             exit(-3);
         }
 
         // Read data from device
-        if (read(cobi_fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
+        if (read(cobi_fds[cobi_id], &read_data, sizeof(read_data)) != sizeof(read_data)) {
             perror("Failed to read from device");
             exit(-4);
         }
@@ -554,13 +554,13 @@ void cobi_read(CobiData *cobi_data, bool use_polling)
         read_offset = (13 + i) * sizeof(uint32_t);
 
         // Write read offset to device
-        if (write(cobi_fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+        if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
             perror("Failed to set read offset in device");
             exit(-5);
         }
 
         // Read data from device
-        if (read(cobi_fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
+        if (read(cobi_fds[cobi_id], &read_data, sizeof(read_data)) != sizeof(read_data)) {
             perror("Failed to read from device");
             exit(-6);
         }
@@ -585,12 +585,12 @@ void cobi_read(CobiData *cobi_data, bool use_polling)
 
     read_offset = 48 * sizeof(uint32_t); // Example read offset
 
-    if (write(cobi_fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+    if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
         perror("Failed to set read offset in device");
         exit(-7);
     }
 
-    if (read(cobi_fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
+    if (read(cobi_fds[cobi_id], &read_data, sizeof(read_data)) != sizeof(read_data)) {
         perror("Failed to read from device");
         exit(-8);
     }
@@ -644,7 +644,7 @@ void print_int_array2d(int **a, int w, int h)
 }
 
 int *cobi_test_multi_times(
-    CobiData *cobi_data, int sample_times, int8_t *solution, bool use_polling
+    int cobi_id, CobiData *cobi_data, int sample_times, int8_t *solution, bool use_polling
 ) {
     int times = 0;
     int *all_results = _malloc_array1d(sample_times);
@@ -654,13 +654,20 @@ int *cobi_test_multi_times(
     double reftime = 0;
 
     while (times < sample_times) {
-        reftime = omp_get_wtime();
-        cobi_write_program(cobi_data->serialized_program, cobi_data->serialized_len);
-        write_cum_time += omp_get_wtime() - reftime;
+        // #pragma omp critical
+        // {
+            reftime = omp_get_wtime();
+            cobi_write_program(cobi_id, cobi_data->serialized_program, cobi_data->serialized_len);
 
-        reftime = omp_get_wtime();
-        cobi_read(cobi_data, use_polling);
-        read_cum_time += omp_get_wtime() - reftime;
+            write_cum_time += omp_get_wtime() - reftime;
+
+            reftime = omp_get_wtime();
+
+
+            cobi_read(cobi_id, cobi_data, use_polling);
+            read_cum_time += omp_get_wtime() - reftime;
+        // }
+
 
         if (Verbose_ > 2) {
             printf("\nSample number %d\n", times);
@@ -674,7 +681,7 @@ int *cobi_test_multi_times(
         // Temporarily use 0xFF as every problem id to verify we are getting results
         if (res == 0 && cobi_data->chip1_problem_id != 0xFF) {
             subprob_zero_count++;
-            if (Verbose_ > 0) {
+            if (Verbose_ > 1) {
                 printf("Subprob zero:\n");
                 print_int_array2d(cobi_data->programming_bits, 52, 52);
 
@@ -811,7 +818,7 @@ void ising_from_qubo(double **ising, double **qubo, int size)
 bool cobi_established(const char* device_file)
 {
     if (access(device_file, F_OK) == 0) {
-        if (Verbose_ > 0) printf("Accessing device file: %s\n", device_file);
+        if (Verbose_ > 1) printf("Accessing device file: %s\n", device_file);
         return true;
     } else {
         // fprintf(stderr, "No device found at %s\n", device_file);
@@ -819,35 +826,79 @@ bool cobi_established(const char* device_file)
     }
 }
 
-int cobi_init()
+int cobi_init(int req_num_devices)
 {
-    int nextdevno = 0;
+    GETMEM(cobi_fds, int, req_num_devices);
+
+    int cur_dev_num = 0;
+    int open_dev_count = 0;
     char device_file[22] = { 0 };
 
-    do {
-        snprintf(device_file, sizeof(device_file), DEVICE_FILE_TEMPLATE, nextdevno);
+    int num_dev_available = 0;
+
+    // NOTE assuming that all devices follow the DEVICE_FILE_TEMPLATE
+    // where they have id 0 to some max, consecutively.
+
+    // TODO allow for non-consecutive device names.
+    // eg, cobi_pcie_card1 goes away we must use cards: 0, 2, 3, ...
+
+    bool get_max_available = false;
+    if (req_num_devices == 0) {
+        get_max_available = true;
+        int i = 0;
+        while(1) {
+            snprintf(device_file, sizeof(device_file), DEVICE_FILE_TEMPLATE, i++);
+            if (cobi_established(device_file)) {
+                // count available devices
+                num_dev_available++;
+            } else {
+                // enumerated all available cobi devices
+                break;
+            }
+        }
+
+        req_num_devices = num_dev_available;
+    }
+
+    cur_dev_num = 0;
+    while (open_dev_count < req_num_devices) {
+        snprintf(device_file, sizeof(device_file), DEVICE_FILE_TEMPLATE, cur_dev_num++);
         if (cobi_established(device_file)) {
+
+            // device exists and we can try to open and claim it
             if (Verbose_ > 2) {
-                printf("cobi init: trying board %s\n", device_file);
+                printf("trying board %s\n", device_file);
             }
 
-            cobi_fd = open(device_file, O_RDWR); // O_RDWR to allow both reading and writing
-            nextdevno++;
-        } else if (nextdevno > 0) {
-            nextdevno = 0;
+            int fd = open(device_file, O_RDWR);
+            if (fd < 0) {
+                if (Verbose_ > 2) {
+                    printf("failed to open %s\n", device_file);
+                }
+            } else {
+                cobi_fds[open_dev_count++] = fd;
+                cobi_num_open++;
+            }
+        } else if (cur_dev_num < req_num_devices) {
+            // not enough devices to satisfy requested number
+            fprintf(stderr, "Too many devices requested. Only %d available.\n", cur_dev_num - 1);
+            exit(2);
+        } else if (cur_dev_num > 0) {
+            // We've checked all devices, wait before checking them again.
+            cur_dev_num = 0;
             if (Verbose_ > 2) {
                 printf("cobi init: all cobi boards are busy.. waiting..\n");
             }
             usleep(1000); // all devices are currently busy, wait before trying again
+        } else {
+          fprintf(stderr, "Failed to find cobi device\n");
+          exit(2);
         }
-    } while (cobi_fd < 0);
-
-    if (cobi_fd < 0) {
-        perror("Failed to open device file");
-        exit(2);
     }
 
-    cobi_reset();
+    for(int i = 0; i < open_dev_count; i++) {
+        cobi_reset(i);
+    }
 
     if(Verbose_ > 0) {
         printf("Cobi chip initialized successfully\n");
@@ -857,21 +908,22 @@ int cobi_init()
 }
 
 void cobi_solver(
-    double **qubo, int numSpins, int8_t *qubo_solution, int num_samples,
-    bool descend, bool use_polling
+    int cobi_device_id,
+    double **qubo, int num_spins, int8_t *qubo_solution, int num_samples,
+    bool use_polling
 ) {
-    if (numSpins != COBI_WEIGHT_MATRIX_DIM) {
-        printf("Quitting.. cobi_solver called with size %d. Cannot be greater than 46.\n", numSpins);
+    if (num_spins != COBI_WEIGHT_MATRIX_DIM) {
+        printf("Quitting.. cobi_solver called with size %d. Cannot be greater than 46.\n", num_spins);
         exit(2);
     }
 
-    CobiData *cobi_data = cobi_data_mk(numSpins, descend);
-    int8_t *ising_solution = (int8_t*)malloc(sizeof(int8_t) * numSpins);
-    double **ising = _malloc_double_array2d(numSpins, numSpins);
-    int **norm_ising = _malloc_array2d(numSpins, numSpins);
+    CobiData *cobi_data = cobi_data_mk(num_spins);
+    int8_t *ising_solution = (int8_t*)malloc(sizeof(int8_t) * num_spins);
+    double **ising = _malloc_double_array2d(num_spins, num_spins);
+    int **norm_ising = _malloc_array2d(num_spins, num_spins);
 
-    ising_from_qubo(ising, qubo, numSpins);
-    cobi_norm_val(norm_ising, ising, numSpins);
+    ising_from_qubo(ising, qubo, num_spins);
+    cobi_norm_val(norm_ising, ising, num_spins);
 
     cobi_prepare_weights(
         norm_ising, COBI_WEIGHT_MATRIX_DIM, COBI_SHIL_VAL,
@@ -883,20 +935,20 @@ void cobi_solver(
     );
 
     // Convert solution from QUBO to ising
-    ising_solution_from_qubo_solution(ising_solution, qubo_solution, numSpins);
+    ising_solution_from_qubo_solution(ising_solution, qubo_solution, num_spins);
 
     int *results = cobi_test_multi_times(
-        cobi_data, num_samples, ising_solution, use_polling
+        cobi_device_id, cobi_data, num_samples, ising_solution, use_polling
     );
 
     // Convert ising solution back to QUBO form
-    qubo_solution_from_ising_solution(qubo_solution, ising_solution, numSpins);
+    qubo_solution_from_ising_solution(qubo_solution, ising_solution, num_spins);
 
     free(results);
     free_cobi_data(cobi_data);
     free(ising_solution);
-    _free_array2d((void**)ising, numSpins);
-    _free_array2d((void**)norm_ising, numSpins);
+    _free_array2d((void**)ising, num_spins);
+    _free_array2d((void**)norm_ising, num_spins);
 }
 
 // cobi_close should be registered by main to run via `atexit`
@@ -907,7 +959,9 @@ void cobi_close()
     }
 
     // cobi_reset();
-    close(cobi_fd);
+    for (int i = 0; i < cobi_num_open; i++) {
+        close(cobi_fds[i]);
+    }
 }
 
 #ifdef __cplusplus

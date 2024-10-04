@@ -112,9 +112,9 @@ int main(int argc, char *argv[]) {
                                        {"delimitedOutput", no_argument, NULL, 'd'},
                                        {"cobiNumSamples", required_argument, NULL, 'z'},
                                        {"numOutputSolutions", required_argument, NULL, 'N'},
+                                       {"parallelCobi", required_argument, NULL, 'P'},
 
                                        // tmp testing cobisolv-pcie
-                                       {"turnOffPolling", no_argument, NULL, 'P'},
                                        {"pid", required_argument, NULL, 1000},
                                        {"dco", required_argument, NULL, 1001},
                                        {"sdelay", required_argument, NULL, 1002},
@@ -123,6 +123,10 @@ int main(int argc, char *argv[]) {
                                        {"shil", required_argument, NULL, 1005},
                                        {"weight", required_argument, NULL, 1006},
                                        {"stime", required_argument, NULL, 1007},
+                                       {"turnOffPolling", no_argument, NULL, 1008},
+
+
+
                                        //
 
                                        {NULL, no_argument, NULL, 0}};
@@ -130,7 +134,7 @@ int main(int argc, char *argv[]) {
     int opt, option_index = 0;
     char *chx;               // used as exit ptr in strto(x) functions
 
-    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:Cdz:N:P", longopts, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:Cdz:N:P:", longopts, &option_index)) != -1) {
         switch (opt) {
             case 'a':
                 strcpy(algo_, optarg);  // algorithm copied off of command line -a option
@@ -256,8 +260,16 @@ int main(int argc, char *argv[]) {
                 param.cobi_descend = true;
                 break;
 
-            // tmp
             case 'P':
+                param.cobi_parallel_repeat = true; //
+
+                if (optarg != NULL) {
+                    param.num_sub_prob_threads = strtol(optarg, &chx, 10);
+                }
+                break;
+
+            // tmp
+            case 1008:
                 param.use_polling = false;
                 break;
 
@@ -336,7 +348,7 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
 
-        if (cobi_init() != 0) {
+        if (cobi_init(param.num_sub_prob_threads) != 0) {
             fprintf(stderr, "init failed\n");
             exit(1);
         }
@@ -351,6 +363,12 @@ int main(int argc, char *argv[]) {
             exit(2);
         }
 
+        if (param.num_sub_prob_threads != 1) {
+            // force use of bfs decomposer when using multiple devices
+            strcpy(algo_, "b");
+        }
+
+        param.use_cobi = true;
         param.sub_size = 46;
         param.sub_sampler = &cobi_sub_sample;
         param.sub_sampler_data = &param;
