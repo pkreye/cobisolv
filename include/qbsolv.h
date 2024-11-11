@@ -55,7 +55,9 @@ typedef struct parameters_t {
 
     int64_t seed;
 
-    //tmp
+    // debug parameters
+    int cobi_card_num;
+
     bool use_polling;
 
     uint16_t pid;
@@ -66,6 +68,8 @@ typedef struct parameters_t {
     uint16_t shil_time;
     uint16_t weight_time;
     uint16_t sample_time;
+
+    uint16_t shil_val;
 
 } parameters_t;
 

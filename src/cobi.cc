@@ -125,7 +125,14 @@ uint8_t *mk_control_nibbles(
     return data;
 }
 
-// Misc utility functions
+// Misc utility function
+void _print_array1d_uchar_hex(uint8_t *a, int len)
+{
+    for (int i = 0; i < len; i++) {
+        printf("%X ", a[i]);
+    }
+    printf("\n");
+}
 
 void _print_array2d_int(int **a, int w, int h)
 {
@@ -462,7 +469,6 @@ void cobi_write_program(int cobi_id, uint32_t *program, int num_words)
     cobi_wait_while_busy(cobi_id);
 
     /* /\* Perform write operations *\/ */
-    #pragma omp critical
     for (int i = 0; i < RAW_BYTE_COUNT; ++i) {
         write_data.offset = 9 * sizeof(uint32_t);
         write_data.value = program[i];    // data to write
@@ -654,27 +660,24 @@ int *cobi_test_multi_times(
     double reftime = 0;
 
     while (times < sample_times) {
-        // #pragma omp critical
-        // {
             reftime = omp_get_wtime();
             cobi_write_program(cobi_id, cobi_data->serialized_program, cobi_data->serialized_len);
-
             write_cum_time += omp_get_wtime() - reftime;
 
             reftime = omp_get_wtime();
-
-
             cobi_read(cobi_id, cobi_data, use_polling);
             read_cum_time += omp_get_wtime() - reftime;
-        // }
 
-
-        if (Verbose_ > 2) {
-            printf("\nSample number %d\n", times);
-        }
+            if (Verbose_ > 2) {
+                printf("\nSample number %d\n", times);
+            }
 
         // TODO use results from both chips
         res = cobi_data->chip1_energy;
+
+        if (Verbose_ > 1) {
+            printf("\nsubsample energy (card fd:%d), chip1:%d, chip2:%d\n", cobi_id, cobi_data->chip1_energy, cobi_data->chip2_energy);
+        }
 
         all_results[times] = res;
 
@@ -826,28 +829,24 @@ bool cobi_established(const char* device_file)
     }
 }
 
-int cobi_init(int req_num_devices)
+int cobi_init(int *req_num_devices)
 {
-    GETMEM(cobi_fds, int, req_num_devices);
-
     int cur_dev_num = 0;
     int open_dev_count = 0;
-    char device_file[22] = { 0 };
+    char device_file[25] = { 0 };
 
     int num_dev_available = 0;
 
-    // NOTE assuming that all devices follow the DEVICE_FILE_TEMPLATE
+    // NOTE assuming that all devices follow the COBI_DEVICE_NAME_TEMPLATE
     // where they have id 0 to some max, consecutively.
 
     // TODO allow for non-consecutive device names.
     // eg, cobi_pcie_card1 goes away we must use cards: 0, 2, 3, ...
 
-    bool get_max_available = false;
-    if (req_num_devices == 0) {
-        get_max_available = true;
+    if (*req_num_devices <= 0) {
         int i = 0;
         while(1) {
-            snprintf(device_file, sizeof(device_file), DEVICE_FILE_TEMPLATE, i++);
+            snprintf(device_file, sizeof(device_file), COBI_DEVICE_NAME_TEMPLATE, i++);
             if (cobi_established(device_file)) {
                 // count available devices
                 num_dev_available++;
@@ -857,12 +856,14 @@ int cobi_init(int req_num_devices)
             }
         }
 
-        req_num_devices = num_dev_available;
+        *req_num_devices = num_dev_available;
     }
 
+    GETMEM(cobi_fds, int, *req_num_devices);
+
     cur_dev_num = 0;
-    while (open_dev_count < req_num_devices) {
-        snprintf(device_file, sizeof(device_file), DEVICE_FILE_TEMPLATE, cur_dev_num++);
+    while (open_dev_count < *req_num_devices) {
+        snprintf(device_file, sizeof(device_file), COBI_DEVICE_NAME_TEMPLATE, cur_dev_num++);
         if (cobi_established(device_file)) {
 
             // device exists and we can try to open and claim it
@@ -876,10 +877,15 @@ int cobi_init(int req_num_devices)
                     printf("failed to open %s\n", device_file);
                 }
             } else {
+                if (Verbose_ > 1) {
+                    printf("card %d, id %d\n", (cur_dev_num - 1), open_dev_count);
+                }
+
                 cobi_fds[open_dev_count++] = fd;
+
                 cobi_num_open++;
             }
-        } else if (cur_dev_num < req_num_devices) {
+        } else if (cur_dev_num < *req_num_devices) {
             // not enough devices to satisfy requested number
             fprintf(stderr, "Too many devices requested. Only %d available.\n", cur_dev_num - 1);
             exit(2);
@@ -908,9 +914,8 @@ int cobi_init(int req_num_devices)
 }
 
 void cobi_solver(
-    int cobi_device_id,
-    double **qubo, int num_spins, int8_t *qubo_solution, int num_samples,
-    bool use_polling
+    CobiSubSamplerParams *params,
+    double **qubo, int num_spins, int8_t *qubo_solution
 ) {
     if (num_spins != COBI_WEIGHT_MATRIX_DIM) {
         printf("Quitting.. cobi_solver called with size %d. Cannot be greater than 46.\n", num_spins);
@@ -925,9 +930,30 @@ void cobi_solver(
     ising_from_qubo(ising, qubo, num_spins);
     cobi_norm_val(norm_ising, ising, num_spins);
 
+    if (Verbose_ > 1) {
+        printf("--\n");
+        _print_array1d_uchar_hex(default_control_nibbles, COBI_CONTROL_NIBBLES_LEN);
+    }
+
+    uint8_t *cntrl_nibbles = mk_control_nibbles(
+        params->cntrl_pid,
+        params->cntrl_dco,
+        params->cntrl_sample_delay,
+        params->cntrl_max_fails,
+        params->cntrl_rosc_time,
+        params->cntrl_shil_time,
+        params->cntrl_weight_time,
+        params->cntrl_sample_time
+    );
+    if (Verbose_ > 1) {
+        printf("--\n");
+        _print_array1d_uchar_hex(cntrl_nibbles, COBI_CONTROL_NIBBLES_LEN);
+    }
+
+
     cobi_prepare_weights(
-        norm_ising, COBI_WEIGHT_MATRIX_DIM, COBI_SHIL_VAL,
-        default_control_nibbles, cobi_data->programming_bits
+        norm_ising, COBI_WEIGHT_MATRIX_DIM, params->shil_val,
+        cntrl_nibbles, cobi_data->programming_bits
     );
 
     cobi_data->serialized_program = cobi_serialize_programming_bits(
@@ -938,7 +964,7 @@ void cobi_solver(
     ising_solution_from_qubo_solution(ising_solution, qubo_solution, num_spins);
 
     int *results = cobi_test_multi_times(
-        cobi_device_id, cobi_data, num_samples, ising_solution, use_polling
+        params->device_id, cobi_data, params->num_samples, ising_solution, params->use_polling
     );
 
     // Convert ising solution back to QUBO form

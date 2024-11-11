@@ -608,10 +608,8 @@ void cobi_sub_sample(double **sub_qubo, int subMatrix, int8_t *sub_solution, voi
     CobiSubSamplerParams *sampler_params = (CobiSubSamplerParams*) sub_sampler_data;
 
     cobi_solver(
-        sampler_params->device_id,
-        sub_qubo, subMatrix, sub_solution,
-        sampler_params->num_samples,
-        sampler_params->use_polling
+        sampler_params,
+        sub_qubo, subMatrix, sub_solution
     );
 
     if (sampler_params->descend) {
@@ -653,7 +651,9 @@ parameters_t default_parameters() {
     param.num_sub_prob_threads = 1;
     param.cobi_parallel_repeat = false;
 
-    // tmp
+    // debug parameters
+    param.cobi_card_num = -1; // don't use specific card
+
     param.use_polling = true;
 
     param.pid = 0xFF;
@@ -664,6 +664,8 @@ parameters_t default_parameters() {
     param.shil_time = 0xF;
     param.weight_time = 0x3;
     param.sample_time = 0xFD;
+
+    param.shil_val = 0;
 
     return param;
 }
@@ -929,24 +931,28 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                     for (int device_num = 0; device_num < param->num_sub_prob_threads; device_num++) {
                         int t_change = 0;
 
-                        if (Verbose_ > 0) {
-                            printf("par loop: %d %d\n", device_num, omp_get_thread_num());
-                        }
-
                         if (param->use_cobi) {
-                            CobiSubSamplerParams *cobi_sampler_params;
-                            if (GETMEM(cobi_sampler_params, CobiSubSamplerParams, 1) == NULL) BADMALLOC
+                            CobiSubSamplerParams cobi_sampler_params;
+                            cobi_sampler_params.device_id = device_num;
+                            cobi_sampler_params.num_samples = param->cobi_num_samples;
+                            cobi_sampler_params.use_polling = param->use_polling;
+                            cobi_sampler_params.descend = param->cobi_descend;
+                            cobi_sampler_params.shil_val = param->shil_val;
+                            cobi_sampler_params.cntrl_pid = param->pid;
+                            cobi_sampler_params.cntrl_dco = param->dco;
+                            cobi_sampler_params.cntrl_sample_delay = param->sample_delay;
+                            cobi_sampler_params.cntrl_max_fails = param->max_fails;
+                            cobi_sampler_params.cntrl_rosc_time = param->rosc_time;
+                            cobi_sampler_params.cntrl_shil_time = param->shil_time;
+                            cobi_sampler_params.cntrl_weight_time = param->weight_time;
+                            cobi_sampler_params.cntrl_sample_time = param->sample_time;
 
-                            cobi_sampler_params->device_id = device_num;
-                            cobi_sampler_params->num_samples = param->cobi_num_samples;
-                            cobi_sampler_params->use_polling = param->use_polling;
-                            cobi_sampler_params->descend = param->cobi_descend;
+                            parameters_t p;
+                            memcpy(&p, param, sizeof(parameters_t));
 
-                            param->sub_sampler_data = cobi_sampler_params;
+                            p.sub_sampler_data = &cobi_sampler_params;
 
-                            t_change = reduce_solve_projection(Icompress, qubo, qubo_size, subMatrix, batch_solutions[device_num], param);
-
-                            free(cobi_sampler_params);
+                            t_change = reduce_solve_projection(Icompress, qubo, qubo_size, subMatrix, batch_solutions[device_num], &p);
                         } else {
                             t_change = reduce_solve_projection(Icompress, qubo, qubo_size, subMatrix, batch_solutions[device_num], param);
                         }

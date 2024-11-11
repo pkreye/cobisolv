@@ -20,7 +20,8 @@ extern "C" {
 #include <stddef.h>
 #include <stdbool.h>
 
-#define DEVICE_FILE_TEMPLATE "/dev/cobi_pcie_card%d"
+#define COBI_DEVICE_NAME_LEN 22 // assumes 2 digit card number and null byte
+#define COBI_DEVICE_NAME_TEMPLATE "/dev/cobi_pcie_card%hhu"
 
 #define COBI_WEIGHT_MATRIX_DIM 46
 #define COBI_PROGRAM_MATRIX_DIM 52
@@ -64,6 +65,15 @@ typedef struct CobiSubSamplerParams {
     int num_samples;
     bool use_polling;
     bool descend;
+    uint16_t shil_val;
+    uint16_t cntrl_pid;
+    uint16_t cntrl_dco;
+    uint16_t cntrl_sample_delay;
+    uint16_t cntrl_max_fails;
+    uint16_t cntrl_rosc_time;
+    uint16_t cntrl_shil_time;
+    uint16_t cntrl_weight_time;
+    uint16_t cntrl_sample_time;
 } CobiSubSamplerParams;
 
 /* typedef struct CobiData { */
@@ -88,9 +98,9 @@ typedef struct CobiSubSamplerParams {
 /* }  CobiData;*/
 
 bool cobi_established(const char*);
-int cobi_init(int);
+int cobi_init(int*);
 void cobi_close(void);
-void cobi_solver(int cobi_device_id, double **, int, int8_t *, int, bool);
+void cobi_solver(CobiSubSamplerParams *, double **, int, int8_t *);
 
 
 
