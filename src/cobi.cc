@@ -24,7 +24,9 @@
 #include <stdint.h>
 #include <string.h>
 
+
 #include <fcntl.h>
+#include <glob.h>
 #include <unistd.h>
 
 #include <time.h>
@@ -135,6 +137,18 @@ void _print_array1d_uchar_hex(uint8_t *a, int len)
 }
 
 void _print_array2d_int(int **a, int w, int h)
+{
+    int x, y;
+    for (x = 0; x < w; x++) {
+        printf("%02d: ", x);
+        for (y = 0; y < h; y++) {
+            printf("%d ", a[x][y]);
+        }
+        printf("\n");
+    }
+}
+
+void _fprint_array2d_int(int **a, int w, int h)
 {
     int x, y;
     for (x = 0; x < w; x++) {
@@ -829,87 +843,88 @@ bool cobi_established(const char* device_file)
     }
 }
 
-int cobi_init(int *req_num_devices)
+int cobi_init(int *req_num_devices, int specific_card)
 {
-    int cur_dev_num = 0;
-    int open_dev_count = 0;
-    char device_file[25] = { 0 };
-
     int num_dev_available = 0;
+    char glob_pattern[25] = { 0 };
 
-    // NOTE assuming that all devices follow the COBI_DEVICE_NAME_TEMPLATE
-    // where they have id 0 to some max, consecutively.
+    if (specific_card >= 0) {
+        printf("Using COBI card %d", specific_card);
+        *req_num_devices = 1;
+        snprintf(glob_pattern, sizeof(glob_pattern), COBI_DEVICE_NAME_TEMPLATE, specific_card);
+    } else {
+        strncpy(glob_pattern, "/dev/cobi_*", sizeof(glob_pattern));
+    }
 
-    // TODO allow for non-consecutive device names.
-    // eg, cobi_pcie_card1 goes away we must use cards: 0, 2, 3, ...
+    glob_t cobi_dev_glob;
+    glob(glob_pattern, GLOB_NOSORT, NULL, &cobi_dev_glob);
 
-    if (*req_num_devices <= 0) {
-        int i = 0;
-        while(1) {
-            snprintf(device_file, sizeof(device_file), COBI_DEVICE_NAME_TEMPLATE, i++);
-            if (cobi_established(device_file)) {
-                // count available devices
-                num_dev_available++;
-            } else {
-                // enumerated all available cobi devices
-                break;
-            }
+    if (Verbose_ > 0) {
+        printf("%d COBI devices requested\n", *req_num_devices);
+        printf("%d COBI devices found:\n", cobi_dev_glob.gl_pathc);
+
+        for(int i = 0; i < cobi_dev_glob.gl_pathc; i++) {
+            printf("%s\n", cobi_dev_glob.gl_pathv[i]);
         }
+    }
 
+    num_dev_available = cobi_dev_glob.gl_pathc;
+
+    // non-positive number used to request all available devices
+    if (*req_num_devices <= 0) {
         *req_num_devices = num_dev_available;
+    } else {
+        *req_num_devices = MIN(*req_num_devices, num_dev_available);
+    }
+
+    if (Verbose_ > 0) {
+        printf("Using %d COBI devices\n", *req_num_devices);
     }
 
     GETMEM(cobi_fds, int, *req_num_devices);
 
-    cur_dev_num = 0;
-    while (open_dev_count < *req_num_devices) {
-        snprintf(device_file, sizeof(device_file), COBI_DEVICE_NAME_TEMPLATE, cur_dev_num++);
-        if (cobi_established(device_file)) {
-
+    for(int cur_dev = 0; cur_dev < num_dev_available; cur_dev++) {
+        char *cur_dev_file = cobi_dev_glob.gl_pathv[cur_dev];
             // device exists and we can try to open and claim it
             if (Verbose_ > 2) {
-                printf("trying board %s\n", device_file);
+                printf("trying device %s\n", cur_dev_file);
             }
 
-            int fd = open(device_file, O_RDWR);
+            int fd = open(cur_dev_file, O_RDWR);
             if (fd < 0) {
-                if (Verbose_ > 2) {
-                    printf("failed to open %s\n", device_file);
+                if (Verbose_ > 1) {
+                    printf("failed to open %s\n", cur_dev_file);
                 }
             } else {
                 if (Verbose_ > 1) {
-                    printf("card %d, id %d\n", (cur_dev_num - 1), open_dev_count);
+                    printf("card %d, id %d\n", cur_dev, cobi_num_open);
                 }
 
-                cobi_fds[open_dev_count++] = fd;
+                cobi_fds[cobi_num_open++] = fd;
 
-                cobi_num_open++;
+                if (cobi_num_open >= *req_num_devices) {
+                    break;
+                }
             }
-        } else if (cur_dev_num < *req_num_devices) {
-            // not enough devices to satisfy requested number
-            fprintf(stderr, "Too many devices requested. Only %d available.\n", cur_dev_num - 1);
-            exit(2);
-        } else if (cur_dev_num > 0) {
-            // We've checked all devices, wait before checking them again.
-            cur_dev_num = 0;
-            if (Verbose_ > 2) {
-                printf("cobi init: all cobi boards are busy.. waiting..\n");
-            }
-            usleep(1000); // all devices are currently busy, wait before trying again
-        } else {
-          fprintf(stderr, "Failed to find cobi device\n");
-          exit(2);
         }
+
+    // Update requested number of devices with the the number of devices we were able to open
+    *req_num_devices = cobi_num_open;
+
+    if(cobi_num_open == 0) {
+        fprintf(stderr, "Failed to open a COBI device\n");
+        return 1;
     }
 
-    for(int i = 0; i < open_dev_count; i++) {
+    for(int i = 0; i < cobi_num_open; i++) {
         cobi_reset(i);
     }
 
     if(Verbose_ > 0) {
-        printf("Cobi chip initialized successfully\n");
+        printf("%d COBI devices initialized successfully\n", cobi_num_open);
     }
 
+    globfree(&cobi_dev_glob);
     return 0;
 }
 

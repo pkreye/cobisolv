@@ -98,7 +98,7 @@ typedef struct CobiSubSamplerParams {
 /* }  CobiData;*/
 
 bool cobi_established(const char*);
-int cobi_init(int*);
+int cobi_init(int*, int);
 void cobi_close(void);
 void cobi_solver(CobiSubSamplerParams *, double **, int, int8_t *);
 

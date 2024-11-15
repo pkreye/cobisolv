@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
                                        {"delimitedOutput", no_argument, NULL, 'd'},
                                        {"cobiNumSamples", required_argument, NULL, 'z'},
                                        {"numOutputSolutions", required_argument, NULL, 'N'},
-                                       {"parallelCobi", no_argument, NULL, 'P'},
+                                       {"parallelCobi", optional_argument, NULL, 'P'},
 
                                        // Debug params
                                        {"pid", required_argument, NULL, GETOPT_LONG_PID},
@@ -277,45 +277,49 @@ int main(int argc, char *argv[]) {
             case 'P':
                 param.cobi_parallel_repeat = true; //
                 param.num_sub_prob_threads = -1;
-                /* if (optarg != NULL) { */
-                /*     param.num_sub_prob_threads = strtol(optarg, &chx, 10); */
-                /* } else { */
-                /*     printf("threads %d\n", param.num_sub_prob_threads); */
-                /* } */
+                // Handle whitespace before optional argument
+                if (optarg == NULL && optind < argc && argv[optind][0] != '-')
+                {
+                    optarg = argv[optind++];
+                }
+
+                if (optarg != NULL) {
+                    param.num_sub_prob_threads = strtol(optarg, &chx, 10);
+                }
                 break;
 
             // debug
             case GETOPT_LONG_PID:
                 param.pid = (uint16_t) strtol(optarg, &chx, 10);
-                printf("pid %s => %d\n", optarg, param.pid);
+                /* printf("pid %s => %d\n", optarg, param.pid); */
                 break;
             case GETOPT_LONG_DCO:
                 param.dco = (uint16_t)strtol(optarg, &chx, 10);
-                printf("dco %s => %d\n", optarg, param.dco);
+                /* printf("dco %s => %d\n", optarg, param.dco); */
                 break;
             case GETOPT_LONG_SDELAY:
                 param.sample_delay = (uint16_t)strtol(optarg, &chx, 10);
-                printf("sample_delay %s => %d\n", optarg, param.sample_delay);
+                /* printf("sample_delay %s => %d\n", optarg, param.sample_delay); */
                 break;
             case GETOPT_LONG_MFAIL:
                 param.max_fails = (uint16_t)strtol(optarg, &chx, 10);
-                printf("max fails %s => %d\n", optarg, param.max_fails);
+                /* printf("max fails %s => %d\n", optarg, param.max_fails); */
                 break;
             case GETOPT_LONG_ROSC:
                 param.rosc_time = (uint16_t)strtol(optarg, &chx, 10);
-                printf("rosc time %s => %d\n", optarg, param.rosc_time);
+                /* printf("rosc time %s => %d\n", optarg, param.rosc_time); */
                 break;
             case GETOPT_LONG_SHIL_TIME:
                 param.shil_time = (uint16_t)strtol(optarg, &chx, 10);
-                printf("shil time %s => %d\n", optarg, param.shil_time);
+                /* printf("shil time %s => %d\n", optarg, param.shil_time); */
                 break;
             case GETOPT_LONG_WEIGHT_TIME:
                 param.weight_time = (uint16_t)strtol(optarg, &chx, 10);
-                printf("weight_time %s => %d\n", optarg, param.weight_time);
+                /* printf("weight_time %s => %d\n", optarg, param.weight_time); */
                 break;
             case GETOPT_LONG_STIME:
                 param.sample_time = (uint16_t)strtol(optarg, &chx, 10);
-                printf("sample time %s => %d\n", optarg, param.sample_time);
+                /* printf("sample time %s => %d\n", optarg, param.sample_time); */
                 break;
             case GETOPT_LONG_TURNOFFPOLLING:
                 param.use_polling = false;
@@ -325,7 +329,7 @@ int main(int argc, char *argv[]) {
                 break;
             case GETOPT_LONG_SHIL_VAL:
                 param.shil_val = (uint16_t)strtol(optarg, &chx, 10);
-                printf("shil val %s => %d\n", optarg, param.shil_val);
+                /* printf("shil val %s => %d\n", optarg, param.shil_val); */
                 break;
 
             default: /* '?' or unknown */
@@ -363,26 +367,20 @@ int main(int argc, char *argv[]) {
     numsolOut_ = 0;
 
     if (use_cobi) {
-        const char cobi_device_file[COBI_DEVICE_NAME_LEN] = "/dev/cobi_pcie_card0";
-
-        if (param.cobi_card_num > 0) {
-            snprintf(
-                cobi_device_file,
-                COBI_DEVICE_NAME_LEN,
-                COBI_DEVICE_NAME_TEMPLATE,
-                param.cobi_card_num
-            );
-
-            // If a specific card is requested, restrict to that card
+        // If a specific card is requested, restrict to that card
+        if (param.cobi_card_num >= 0) {
             param.num_sub_prob_threads = 1;
         }
 
-        if (!cobi_established(cobi_device_file)) {
-            fprintf(stderr, "could not find cobi board\n");
-            exit(1);
+        if (param.num_sub_prob_threads == 0) {
+            fprintf(stderr, "Requested number of devices must be greater than 0.\n");
+            exit(2);
+        } else if (param.num_sub_prob_threads != 1) {
+            // force use of bfs decomposer when using multiple devices
+            strcpy(algo_, "b");
         }
 
-        if (cobi_init(&param.num_sub_prob_threads) != 0) {
+        if (cobi_init(&param.num_sub_prob_threads, param.cobi_card_num) != 0) {
             fprintf(stderr, "init failed\n");
             exit(1);
         }
@@ -397,16 +395,12 @@ int main(int argc, char *argv[]) {
             exit(2);
         }
 
-        if (param.num_sub_prob_threads != 1) {
-            // force use of bfs decomposer when using multiple devices
-            strcpy(algo_, "b");
-        }
-
         param.use_cobi = true;
         param.sub_size = 46;
         param.sub_sampler = &cobi_sub_sample;
         param.sub_sampler_data = &param;
     } else {
+        // stick to single thread when not using cobi boards
         param.num_sub_prob_threads = 1;
     }
 
@@ -457,7 +451,7 @@ int main(int argc, char *argv[]) {
 }
 
 void print_help(void) {
-    printf("\n\t%s -i infile [-C] [-P] [-d] [-z numSamples] [-p preSearchFactor] \n"
+    printf("\n\t%s -i infile [-C] [-P numDevices] [-d] [-z numSamples] [-p preSearchFactor] \n"
            "\t\t[-g globalSearchPassFactor] [-o outfile] [-m] [-T] [-n] [-S SubMatrix] \n"
            "\t\t[-w] [-h] [-a algorithm] [-v verbosityLevel] [-V] [-q] [-t seconds]\n"
            "\nDESCRIPTION\n"
@@ -476,9 +470,11 @@ void print_help(void) {
            "\t\tIf present, this optional argument causes subproblems to be\n"
            "\t\tsolved on the COBI chip. Without this option subproblems will\n"
            "\t\tbe solved with tabu search.\n"
-           "\t-P \n"
+           "\t-P numDevices\n"
            "\t\tRun each subproblem in parallel on all available COBI devices.\n"
            "\t\tThis option must be used in conjunction with the \"-C\" flag.\n"
+           "\t\tIf an optional positive integer is provided, an attempt will be\n"
+           "\t\tmade to use that many COBI devices or as many as are available.\n"
            "\t-z numSamples \n"
            "\t\tOptional argument that sets the number of solutions to\n"
            "\t\tsample from the cobi chip for each subproblem. Defaults to 10.\n"
