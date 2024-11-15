@@ -28,17 +28,17 @@
 
 
 // Debug getopt long parmeters
-#define GETOPT_LONG_PID            1000
-#define GETOPT_LONG_DCO            1001
-#define GETOPT_LONG_SDELAY         1002
-#define GETOPT_LONG_MFAIL          1003
-#define GETOPT_LONG_ROSC           1004
-#define GETOPT_LONG_SHIL_TIME      1005
-#define GETOPT_LONG_WEIGHT_TIME    1006
-#define GETOPT_LONG_STIME          1007
-#define GETOPT_LONG_TURNOFFPOLLING 1008
-#define GETOPT_LONG_CARD           1009
-#define GETOPT_LONG_SHIL_VAL       1010
+#define GETOPT_PID            1000
+#define GETOPT_DCO            1001
+#define GETOPT_SDELAY         1002
+#define GETOPT_MFAIL          1003
+#define GETOPT_ROSC           1004
+#define GETOPT_SHIL_TIME      1005
+#define GETOPT_WEIGHT_TIME    1006
+#define GETOPT_STIME          1007
+#define GETOPT_TURNOFFPOLLING 1008
+#define GETOPT_CARD           1009
+#define GETOPT_SHIL_VAL       1010
 
 void print_help(void);
 void print_qubo_format(void);
@@ -129,17 +129,17 @@ int main(int argc, char *argv[]) {
                                        {"parallelCobi", optional_argument, NULL, 'P'},
 
                                        // Debug params
-                                       {"pid", required_argument, NULL, GETOPT_LONG_PID},
-                                       {"dco", required_argument, NULL, GETOPT_LONG_DCO},
-                                       {"sdelay", required_argument, NULL, GETOPT_LONG_SDELAY},
-                                       {"mfail", required_argument, NULL, GETOPT_LONG_MFAIL},
-                                       {"rosc", required_argument, NULL, GETOPT_LONG_ROSC},
-                                       {"shilTime", required_argument, NULL, GETOPT_LONG_SHIL_TIME},
-                                       {"weightTime", required_argument, NULL, GETOPT_LONG_WEIGHT_TIME},
-                                       {"stime", required_argument, NULL, GETOPT_LONG_STIME},
-                                       {"turnOffPolling", no_argument, NULL, GETOPT_LONG_TURNOFFPOLLING},
-                                       {"card", required_argument, NULL, GETOPT_LONG_CARD},
-                                       {"shilVal", required_argument, NULL, GETOPT_LONG_SHIL_VAL},
+                                       {"pid", required_argument, NULL, GETOPT_PID},
+                                       {"dco", required_argument, NULL, GETOPT_DCO},
+                                       {"sdelay", required_argument, NULL, GETOPT_SDELAY},
+                                       {"mfail", required_argument, NULL, GETOPT_MFAIL},
+                                       {"rosc", required_argument, NULL, GETOPT_ROSC},
+                                       {"shilTime", required_argument, NULL, GETOPT_SHIL_TIME},
+                                       {"weightTime", required_argument, NULL, GETOPT_WEIGHT_TIME},
+                                       {"stime", required_argument, NULL, GETOPT_STIME},
+                                       {"turnOffPolling", no_argument, NULL, GETOPT_TURNOFFPOLLING},
+                                       {"card", required_argument, NULL, GETOPT_CARD},
+                                       {"shilVal", required_argument, NULL, GETOPT_SHIL_VAL},
 
                                        //
 
@@ -148,7 +148,7 @@ int main(int argc, char *argv[]) {
     int opt, option_index = 0;
     char *chx;               // used as exit ptr in strto(x) functions
 
-    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:Cdz:N:P", longopts, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:Cdz:N:P::", longopts, &option_index)) != -1) {
         switch (opt) {
             case 'a':
                 strcpy(algo_, optarg);  // algorithm copied off of command line -a option
@@ -289,47 +289,38 @@ int main(int argc, char *argv[]) {
                 break;
 
             // debug
-            case GETOPT_LONG_PID:
+            case GETOPT_PID:
                 param.pid = (uint16_t) strtol(optarg, &chx, 10);
-                /* printf("pid %s => %d\n", optarg, param.pid); */
                 break;
-            case GETOPT_LONG_DCO:
+            case GETOPT_DCO:
                 param.dco = (uint16_t)strtol(optarg, &chx, 10);
-                /* printf("dco %s => %d\n", optarg, param.dco); */
                 break;
-            case GETOPT_LONG_SDELAY:
+            case GETOPT_SDELAY:
                 param.sample_delay = (uint16_t)strtol(optarg, &chx, 10);
-                /* printf("sample_delay %s => %d\n", optarg, param.sample_delay); */
                 break;
-            case GETOPT_LONG_MFAIL:
+            case GETOPT_MFAIL:
                 param.max_fails = (uint16_t)strtol(optarg, &chx, 10);
-                /* printf("max fails %s => %d\n", optarg, param.max_fails); */
                 break;
-            case GETOPT_LONG_ROSC:
+            case GETOPT_ROSC:
                 param.rosc_time = (uint16_t)strtol(optarg, &chx, 10);
-                /* printf("rosc time %s => %d\n", optarg, param.rosc_time); */
                 break;
-            case GETOPT_LONG_SHIL_TIME:
+            case GETOPT_SHIL_TIME:
                 param.shil_time = (uint16_t)strtol(optarg, &chx, 10);
-                /* printf("shil time %s => %d\n", optarg, param.shil_time); */
                 break;
-            case GETOPT_LONG_WEIGHT_TIME:
+            case GETOPT_WEIGHT_TIME:
                 param.weight_time = (uint16_t)strtol(optarg, &chx, 10);
-                /* printf("weight_time %s => %d\n", optarg, param.weight_time); */
                 break;
-            case GETOPT_LONG_STIME:
+            case GETOPT_STIME:
                 param.sample_time = (uint16_t)strtol(optarg, &chx, 10);
-                /* printf("sample time %s => %d\n", optarg, param.sample_time); */
                 break;
-            case GETOPT_LONG_TURNOFFPOLLING:
+            case GETOPT_TURNOFFPOLLING:
                 param.use_polling = false;
                 break;
-            case GETOPT_LONG_CARD:
+            case GETOPT_CARD:
                 param.cobi_card_num = (uint16_t)strtol(optarg, &chx, 10);
                 break;
-            case GETOPT_LONG_SHIL_VAL:
+            case GETOPT_SHIL_VAL:
                 param.shil_val = (uint16_t)strtol(optarg, &chx, 10);
-                /* printf("shil val %s => %d\n", optarg, param.shil_val); */
                 break;
 
             default: /* '?' or unknown */
