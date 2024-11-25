@@ -23,6 +23,11 @@
 extern "C" {
 #endif
 
+uint32_t reverse_uint32(uint32_t val)
+{
+    int result = (0xFFFF0000 & val) >> 16 | (0x0000FFFF & val) << 16;
+}
+
 // create and pointer fill a 2d array of "size" for
 // X[rows][cols] addressing. Using only a single malloc
 void **malloc2D(uint rows, uint cols, uint size) {
@@ -792,7 +797,7 @@ bool _int_array_memb(int *a, int len, int test) {
 
 /*
  * Get a new sub qubo by traversing the qubo problem with BFS, starting from a random vertex.
- * Once we have explored `subQuboSize` number of vertices we have enough to create the new sub problem,
+ * Once we have explored `sub_qubo_size` number of vertices we have enough to create the new sub problem,
  * we are done.
  */
 int bfs_get_new_sub_qubo(double **qubo, const int qubo_size, const int sub_qubo_size, int *sub_vars)

@@ -22,21 +22,10 @@
 #define PCI_ROW_SIZE 7
 #define PCI_MAX_DEVICES 10
 
-#ifdef COBIDUALRES
-#define PCI_RAW_BYTE_CNT 338
-#define PCI_READ_COUNT_COBI_CHIP_1 3
-#define PCI_READ_COUNT_COBI_CHIP_2 3
-
-typedef struct {
-    off_t offset;
-    uint32_t value;
-} pci_write_data;
-#else
-#define PCI_RAW_BYTE_CNT 166
+#define PCI_PROGRAM_LEN 166 // 166 * 64bits = (51 * 52 + 4(dummy bits)) * 4bits
 #define PCI_READ_COUNT_COBI_CHIP 3
 
 typedef struct {
     off_t offset;
     uint64_t value;
 } pci_write_data;
-#endif

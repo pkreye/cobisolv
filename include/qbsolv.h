@@ -69,7 +69,7 @@ typedef struct parameters_t {
     uint16_t weight_time;
     uint16_t sample_time;
 
-    uint16_t shil_val;
+    uint8_t shil_val;
 
 } parameters_t;
 

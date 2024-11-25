@@ -36,9 +36,8 @@
 #define GETOPT_SHIL_TIME      1005
 #define GETOPT_WEIGHT_TIME    1006
 #define GETOPT_STIME          1007
-#define GETOPT_TURNOFFPOLLING 1008
-#define GETOPT_CARD           1009
-#define GETOPT_SHIL_VAL       1010
+#define GETOPT_CARD           1008
+#define GETOPT_SHIL_VAL       1009
 
 void print_help(void);
 void print_qubo_format(void);
@@ -137,7 +136,6 @@ int main(int argc, char *argv[]) {
                                        {"shilTime", required_argument, NULL, GETOPT_SHIL_TIME},
                                        {"weightTime", required_argument, NULL, GETOPT_WEIGHT_TIME},
                                        {"stime", required_argument, NULL, GETOPT_STIME},
-                                       {"turnOffPolling", no_argument, NULL, GETOPT_TURNOFFPOLLING},
                                        {"card", required_argument, NULL, GETOPT_CARD},
                                        {"shilVal", required_argument, NULL, GETOPT_SHIL_VAL},
 
@@ -313,14 +311,11 @@ int main(int argc, char *argv[]) {
             case GETOPT_STIME:
                 param.sample_time = (uint16_t)strtol(optarg, &chx, 10);
                 break;
-            case GETOPT_TURNOFFPOLLING:
-                param.use_polling = false;
-                break;
             case GETOPT_CARD:
                 param.cobi_card_num = (uint16_t)strtol(optarg, &chx, 10);
                 break;
             case GETOPT_SHIL_VAL:
-                param.shil_val = (uint16_t)strtol(optarg, &chx, 10);
+                param.shil_val = (uint8_t)strtol(optarg, &chx, 10);
                 break;
 
             default: /* '?' or unknown */
@@ -387,7 +382,7 @@ int main(int argc, char *argv[]) {
         }
 
         param.use_cobi = true;
-        param.sub_size = 46;
+        param.sub_size = 45;
         param.sub_sampler = &cobi_sub_sample;
         param.sub_sampler_data = &param;
     } else {

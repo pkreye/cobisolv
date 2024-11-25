@@ -638,7 +638,7 @@ parameters_t default_parameters() {
     param.num_output_solutions = 1;
     param.repeats = 50;
     param.sub_sampler = &tabu_sub_sample;
-    param.sub_size = 46;
+    param.sub_size = 45;
     param.sub_sampler_data = NULL;
     param.preSearchPassFactor = 0;
     param.globalSearchPassFactor = 0;
@@ -646,7 +646,7 @@ parameters_t default_parameters() {
 
     param.use_cobi = false;
     param.cobi_delay = 100;
-    param.cobi_num_samples = 10;
+    param.cobi_num_samples = 5;
     param.cobi_descend = false;
     param.num_sub_prob_threads = 1;
     param.cobi_parallel_repeat = false;
@@ -654,10 +654,8 @@ parameters_t default_parameters() {
     // debug parameters
     param.cobi_card_num = -1; // don't use specific card
 
-    param.use_polling = true;
-
     param.pid = 0xFF;
-    param.dco =  0x5;
+    param.dco = 0;
     param.sample_delay = 0xFF;
     param.max_fails = 0x1F;
     param.rosc_time = 0x3;
@@ -935,7 +933,6 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                             CobiSubSamplerParams cobi_sampler_params;
                             cobi_sampler_params.device_id = device_num;
                             cobi_sampler_params.num_samples = param->cobi_num_samples;
-                            cobi_sampler_params.use_polling = param->use_polling;
                             cobi_sampler_params.descend = param->cobi_descend;
                             cobi_sampler_params.shil_val = param->shil_val;
                             cobi_sampler_params.cntrl_pid = param->pid;

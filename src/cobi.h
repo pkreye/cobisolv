@@ -23,12 +23,34 @@ extern "C" {
 #define COBI_DEVICE_NAME_LEN 22 // assumes 2 digit card number and null byte
 #define COBI_DEVICE_NAME_TEMPLATE "/dev/cobi_pcie_card%hhu"
 
-#define COBI_WEIGHT_MATRIX_DIM 46
-#define COBI_PROGRAM_MATRIX_DIM 52
+#define COBI_WEIGHT_MATRIX_DIM 45
+#define COBI_PROGRAM_MATRIX_HEIGHT 51
+#define COBI_PROGRAM_MATRIX_WIDTH 52
 #define COBI_SHIL_VAL 7
+#define COBI_SHIL_INDEX 22 // index of first SHIL row/col in 2d program array
+
+#define COBI_CHIP_OUTPUT_READ_COUNT 3 // number of reads needed to get a full output
+#define COBI_CHIP_OUTPUT_LEN 69  // number of bits in a full output
+
+#define COBI_CONTROL_NIBBLES_LEN 52
+
+// FPGA
+#define COBI_FPGA_ADDR_READ 4
+#define COBI_FPGA_ADDR_CONTROL 8
+#define COBI_FPGA_ADDR_WRITE 9
+#define COBI_FPGA_ADDR_STATUS 10
+
+#define COBI_FPGA_STATUS_MASK_STATUS 1          // 1 == Controller is busy
+#define COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY 2 // 1 == Read FIFO Empty
+#define COBI_FPGA_STATUS_MASK_READ_FIFO_FULL  4 // 1 == Read FIFO Full
+#define COBI_FPGA_STATUS_MASK_S_READY 8         // 1 == ready to receive data
+#define COBI_FPGA_STATUS_MASK_READ_COUNT 0x7F0  // Read FIFO Count
+
+#define COBI_FPGA_STATUS_VALUE_S_READY 8
+
+#define COBI_FPGA_CONTROL_RESET 0
 
 typedef struct CobiOutput {
-    bool *raw_bits;
     int problem_id;
     int *spins;
     int energy;
@@ -39,21 +61,12 @@ typedef struct CobiData {
     size_t probSize;
     size_t w;
     size_t h;
-    int **programming_bits;
-    uint32_t *serialized_program;
+    uint8_t **programming_bits;
+    uint64_t *serialized_program;
     int serialized_len;
 
-    bool *chip1_output;
-    int chip1_problem_id;
-    int *chip1_spins;
-    int chip1_energy;
-    int chip1_core_id;
-
-    bool *chip2_output;
-    int chip2_problem_id;
-    int *chip2_spins;
-    int chip2_energy;
-    int chip2_core_id;
+    size_t num_outputs;
+    CobiOutput **chip_output;
 
     uint32_t process_time;
 
@@ -63,9 +76,8 @@ typedef struct CobiData {
 typedef struct CobiSubSamplerParams {
     int device_id;
     int num_samples;
-    bool use_polling;
     bool descend;
-    uint16_t shil_val;
+    uint8_t shil_val;
     uint16_t cntrl_pid;
     uint16_t cntrl_dco;
     uint16_t cntrl_sample_delay;
@@ -76,38 +88,15 @@ typedef struct CobiSubSamplerParams {
     uint16_t cntrl_sample_time;
 } CobiSubSamplerParams;
 
-/* typedef struct CobiData { */
-/*     size_t probSize; */
-/*     size_t w; */
-/*     size_t h; */
-/*     int **programming_bits; */
-
-/*     uint8_t *chip1_output; */
-/*     uint8_t *chip2_output; */
-
-/*     int *chip1_spins; */
-/*     int *chip2_spins; */
-
-/*     uint32_t process_time; */
-
-/*     int num_samples; */
-/*     int64_t chip_delay; */
-/*     bool descend; */
-
-/*     int sample_test_count; */
-/* }  CobiData;*/
-
 bool cobi_established(const char*);
 int cobi_init(int*, int);
 void cobi_close(void);
 void cobi_solver(CobiSubSamplerParams *, double **, int, int8_t *);
 
-
-
 // For testing: to be removed
-    void __cobi_print_write_time();
-    void __cobi_print_read_time();
-    void __cobi_print_subprob_zero_count();
+void __cobi_print_write_time();
+void __cobi_print_read_time();
+void __cobi_print_subprob_zero_count();
 
 #ifdef __cplusplus
 }
