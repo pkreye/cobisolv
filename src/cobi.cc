@@ -320,7 +320,6 @@ CobiData *cobi_data_mk(size_t num_spins, size_t num_samples)
     return d;
 }
 
-
 void free_cobi_output(CobiOutput *o)
 {
     free(o->spins);
@@ -384,8 +383,6 @@ uint8_t hex_mapping(int val)
 // returns data in serialized array of 64 bit chunks
 uint64_t *cobi_serialize_programming_bits(uint8_t **prog_nibs)
 {
-    // int num_bits = COBI_PROGRAM_MATRIX_WIDTH * COBI_PROGRAM_MATRIX_HEIGHT * 4;
-
     if (Verbose_ > 5) {
         printf("Serialized program into %d 64bit chunks\n", PCI_PROGRAM_LEN);
     }
@@ -437,7 +434,8 @@ uint64_t *cobi_serialize_programming_bits(uint8_t **prog_nibs)
 }
 
 
-// @param weights 2d array of ints values must be in range -7 to 7
+// @param weights 2d array of ints, values must be in range -7 to 7
+// Assume program_array was already initialized to 0
 void cobi_prepare_weights(
     int **weights, uint8_t shil_val, uint8_t *control_bits, uint8_t **program_array
 ) {
@@ -452,21 +450,8 @@ void cobi_prepare_weights(
         printf("==\n");
     }
 
-
-    // Assume program_array was already initialized to 0
-    // // zero outer cols
-    // for(int k = 0; k < COBI_PROGRAM_MATRIX_HEIGHT; k++) {
-    //     program_array[k][0] = 0;
-    //     program_array[k][1] = 0;
-    //     program_array[k][3] = 0;
-    //     program_array[k][COBI_PROGRAM_MATRIX_WIDTH-1] = 0;
-    // }
-
     // initialize outer rows
     for(int k = 0; k < COBI_PROGRAM_MATRIX_WIDTH; k++) {
-        // program_array[0][k] = 0;
-        // program_array[COBI_PROGRAM_MATRIX_HEIGHT - 2][k] = 0;
-
         // add control bits in last row
         program_array[COBI_PROGRAM_MATRIX_HEIGHT - 1][k] = control_bits[k];
     }
@@ -492,14 +477,13 @@ void cobi_prepare_weights(
         printf("==\n");
     }
 
-
     // populate weights
     int row;
     int col;
     const int lfo_index_col = 3;
     const int lfo_index_row = COBI_PROGRAM_MATRIX_HEIGHT - 3;
     for (int i = 0; i < COBI_WEIGHT_MATRIX_DIM; i++) {
-        // the program matrix is vertically flipped relative to the weight matrix
+        // the program matrix is flipped vertically relative to the weight matrix
         if (i < COBI_SHIL_INDEX) {
             row = COBI_PROGRAM_MATRIX_HEIGHT - 3 - i; // skip the control and calibration rows
         } else {
@@ -639,16 +623,14 @@ void cobi_write_program(int cobi_id, uint64_t *program)
         write_data[i].value = swap_bytes(program[i]); // data to write
     }
 
-
     //  Perform write operations
-    // for (int j = 0; j < 5; j++) {
-    if (write(cobi_fds[cobi_id], write_data, PCI_PROGRAM_LEN * sizeof(pci_write_data)) != PCI_PROGRAM_LEN * sizeof(pci_write_data))
+    int bytes_to_write = PCI_PROGRAM_LEN * sizeof(pci_write_data);
+    if (write(cobi_fds[cobi_id], write_data, bytes_to_write) != bytes_to_write)
     {
         fprintf(stderr, "Failed to write to device %d\n", cobi_id);
         close(cobi_fds[cobi_id]);
         exit(10);
     }
-            // }
 
     if (Verbose_ > 3) {
         printf("Programming completed\n");
@@ -724,6 +706,7 @@ void cobi_read(int cobi_id, CobiData *cobi_data, int num_to_read)
         }
 
         // Parse bits into CobiOutput
+
         int bit_index = 0;
 
         // Parse program id
@@ -743,10 +726,10 @@ void cobi_read(int cobi_id, CobiData *cobi_data, int num_to_read)
             output->spins[i] = bits[bit_index++];
         }
 
-        if (Verbose_ > 1) {
-            // bit_index == 4+4+46 == 54;
-            printf("cobi_read::energy index 54 =? %d\n", bit_index);
-        }
+        // if (Verbose_ > 1) {
+        //     // bit_index == 4+4+46 == 54;
+        //     printf("cobi_read::energy index 54 =? %d\n", bit_index);
+        // }
 
         // Parse energy from last 15 bits
         output->energy = bits_to_signed_int(&bits[bit_index], 15);

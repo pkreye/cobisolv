@@ -20,13 +20,13 @@ extern "C" {
 #include <stddef.h>
 #include <stdbool.h>
 
-#define COBI_DEVICE_NAME_LEN 22 // assumes 2 digit card number and null byte
+#define COBI_DEVICE_NAME_LEN 23 // assumes 2 digit card number and null byte
 #define COBI_DEVICE_NAME_TEMPLATE "/dev/cobi_pcie_card%hhu"
 
 #define COBI_WEIGHT_MATRIX_DIM 45
 #define COBI_PROGRAM_MATRIX_HEIGHT 51
 #define COBI_PROGRAM_MATRIX_WIDTH 52
-#define COBI_SHIL_VAL 7
+#define COBI_SHIL_VAL 0
 #define COBI_SHIL_INDEX 22 // index of first SHIL row/col in 2d program array
 
 #define COBI_CHIP_OUTPUT_READ_COUNT 3 // number of reads needed to get a full output
