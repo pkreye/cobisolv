@@ -4,7 +4,7 @@ from libc.stdint cimport int64_t
 from libc.stdint cimport uint32_t
 from libcpp cimport bool
 
-cdef extern from "cobidualres.c":        
+cdef extern from "cobi.c":
     ctypedef struct nums:
         int Q[46][46]
         int energy
