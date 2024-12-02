@@ -10,9 +10,9 @@ cdef extern from "cobi.c":
         int energy
         int spins[46]
         int debug
-    void solveQ(nums* obj)
+    void solveQ(nums* obj, int device)
 
-def w_solveQ(nums obj):
+def w_solveQ(nums obj, int device):
     cdef nums *nums_ptr = &obj
-    solveQ(nums_ptr)
+    solveQ(nums_ptr, device)
     return obj
