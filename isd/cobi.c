@@ -51,9 +51,14 @@ typedef struct {
     uint64_t value;
 } pci_write_data;
 
+typedef struct CobiInput{
+    int Q[46][46];
+    int debug;
+} CobiInput;
+
 typedef struct CobiOutput {
     int problem_id;
-    int *spins;
+    int spins[46];
     int energy;
     int core_id;
 } CobiOutput;
@@ -106,7 +111,7 @@ uint64_t swap_bytes(uint64_t val) {;
            ((val << 8)  & 0xFF00FF00FF00FF00) ;
 }
 
-// Perform 1's compliment conversion to int for a given bit sequence
+// Perform two's compliment conversion to int for a given bit sequence
 int bits_to_signed_int(uint8_t *bits, size_t num_bits)
 {
     if (num_bits >= 8 * sizeof(int)) {
@@ -138,16 +143,39 @@ void print_array2d(int **a, int w, int h)
     }
 }
 
-void print_array2d_uint8(uint8_t **a, int w, int h)
+void print_program_matrix(uint8_t a[][COBI_PROGRAM_MATRIX_WIDTH])
 {
     int row, col;
-    for (row = 0; row < h; row++) {
+    for (row = 0; row < COBI_PROGRAM_MATRIX_HEIGHT; row++) {
         printf("%02d: ", row);
-        for (col = 0; col < w; col++) {
+        for (col = 0; col < COBI_PROGRAM_MATRIX_WIDTH; col++) {
             printf("%x ", a[row][col]);
         }
         printf("\n");
     }
+}
+
+
+void print_spins(int *spins)
+{
+    printf("Spins: ");
+    for (int i = 0; i < 46; i++) {
+        printf("%c ", spins[i] == -1 ? '-' : '+');
+
+    }
+    printf("\n");
+}
+
+void print_program(uint64_t *program)
+{
+    printf("Serialized program (len %d):\n", PCI_PROGRAM_LEN);
+    for (int x = 0; x < PCI_PROGRAM_LEN; x++) {
+        printf("%16lX, ", program[x]);
+        if (x % 7 == 0) {
+            printf("\n");
+        }
+    }
+    printf("\n--\n");
 }
 
 int _rand_int_normalized()
@@ -283,7 +311,7 @@ uint8_t hex_mapping(int val)
 CobiOutput *cobi_output_mk_default(size_t num_spins)
 {
     CobiOutput *output = (CobiOutput*) malloc(sizeof(CobiOutput));
-    output->spins      = _malloc_array1d(num_spins);
+    memset(output->spins, 0, sizeof(output->spins));
     output->problem_id = -1;
     output->core_id    = -1;
     output->energy     = 0;
@@ -311,7 +339,6 @@ CobiData *cobi_data_mk(size_t num_spins, size_t num_samples)
 
 void free_cobi_output(CobiOutput *o)
 {
-    free(o->spins);
     free(o);
 }
 
@@ -330,7 +357,7 @@ void free_cobi_data(CobiData *d)
 // @param weights 2d array of ints values must be in range -7 to 7
 // Assume program_array was already initialized to 0
 void cobi_prepare_weights(
-    int **weights, uint8_t shil_val, uint8_t *control_bits, uint8_t **program_array
+    int weights[46][46], uint8_t shil_val, uint8_t *control_bits, uint8_t program_array[][COBI_PROGRAM_MATRIX_WIDTH]
 ) {
     int mapped_shil_val = hex_mapping(shil_val);
 
@@ -390,10 +417,10 @@ void cobi_prepare_weights(
 // Serialize the matrix to be programmed to the cobi chip
 //
 // @param prog_nibs The matrix to be programmed, assumed to be a 2d array of nibbles
-// returns data in serialized array of 64 bit chunks
-uint64_t *cobi_serialize_programming_bits(uint8_t **prog_nibs)
+// @param serialized output is stored as serialized array of 64 bit chunks
+void cobi_serialize_programming_bits(uint8_t prog_nibs[][COBI_PROGRAM_MATRIX_WIDTH], uint64_t serialized[PCI_PROGRAM_LEN])
 {
-    uint64_t *serialized = (uint64_t*)malloc(PCI_PROGRAM_LEN * sizeof(uint64_t));
+    /* uint64_t *serialized = (uint64_t*)malloc(PCI_PROGRAM_LEN * sizeof(uint64_t)); */
 
     int serial_index = 0;
 
@@ -417,8 +444,6 @@ uint64_t *cobi_serialize_programming_bits(uint8_t **prog_nibs)
         // Add last 16 nib number
         serialized[serial_index++] = cur_val;
     }
-
-    return serialized;
 }
 
 void cobi_wait_for_write(int cobi_fd)
@@ -484,7 +509,7 @@ uint32_t cobi_read_status(int fd)
 {
     uint32_t read_data;
     off_t read_offset;
-    read_offset = 10 * sizeof(uint32_t); // read fifo empty status
+    read_offset = COBI_FPGA_ADDR_STATUS * sizeof(uint32_t); // read fifo empty status
 
     // Write read offset to device
     if (write(fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
@@ -504,19 +529,38 @@ uint32_t cobi_read_status(int fd)
     return read_data;
 }
 
-void cobi_read(int cobi_fd, CobiData *cobi_data, int num_to_read)
+bool cobi_has_result(int cobi_fd)
+{
+    uint32_t read_data = cobi_read_status(cobi_fd);
+
+    // Check there is at least one result to be read
+    bool has_result = (read_data & COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY) != COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY;
+    return has_result;
+}
+
+int cobi_get_result_count(int cobi_fd)
+{
+    uint32_t read_data = cobi_read_status(cobi_fd);
+
+    int read_count = (read_data & COBI_FPGA_STATUS_MASK_READ_COUNT) >> 4;
+    return read_count;
+}
+
+// Read a single result from the given COBI device.
+// If wait_for_result is set, block until a result becomes availble
+int cobi_read(int cobi_fd, CobiOutput *result, bool wait_for_result)
 {
     uint32_t read_data;
     off_t read_offset;
-    int num_read_bits = 32;
+    int result_count = 0;
 
-    for (int read_count = 0; read_count < num_to_read; read_count++) {
-        read_data = cobi_read_status(cobi_fd);
-        printf("status read: 0x%x\n", read_data);
+    bool result_ready = cobi_has_result(cobi_fd);
+
+    if (!result_ready && wait_for_result) {
         cobi_wait_for_read(cobi_fd);
-
-        CobiOutput *output = cobi_data->chip_output[read_count];
+    } else if (result_ready) {
         uint8_t bits[COBI_CHIP_OUTPUT_LEN] = {0};
+        int num_read_bits = 32;
 
         // Read one result from chip
         for (int i = 0; i < COBI_CHIP_OUTPUT_READ_COUNT; ++i) {
@@ -549,29 +593,36 @@ void cobi_read(int cobi_fd, CobiData *cobi_data, int num_to_read)
             }
         }
 
+        result_count++;
+
         // Parse bits into CobiOutput
         int bit_index = 0;
 
         // Parse program id
-        output->problem_id = 0;
+        result->problem_id = 0;
         for (int i = 3; i >= 0; i--) {
-            output->problem_id |= bits[bit_index++] << i;
+            result->problem_id |= bits[bit_index++] << i;
         }
 
         // Parse core id
-        output->core_id = 0;
+        result->core_id = 0;
         for (int i = 3; i >= 0; i--) {
-            output->core_id |= bits[bit_index++] << i;
+            result->core_id |= bits[bit_index++] << i;
         }
 
-        // Parse spins, from bit 8 to bit 53
+        // Parse spins, from bit index 8 to 53
         for (int i = 0; i < 46; i++) {
-            output->spins[i] = bits[bit_index++];
+            result->spins[i] = bits[bit_index++] == 0 ? 1 : -1;
         }
 
         // Parse energy from last 15 bits
-        output->energy = bits_to_signed_int(&bits[bit_index], 15);
+        result->energy = bits_to_signed_int(&bits[bit_index], 15);
+
+        // check if there is another result ready
+        result_ready = cobi_has_result(cobi_fd);
     }
+
+    return result_count;
 }
 
 void cobi_reset(int cobi_fd)
@@ -588,12 +639,13 @@ void cobi_reset(int cobi_fd)
 }
 
 
-// Write one serialized problem to the given cobi device
+// Write one serialized problem to the given cobi device.
+// Blocks until device is ready for problem to be written.
 void cobi_write_program(int cobi_fd, uint64_t *program)
 {
     pci_write_data write_data[PCI_PROGRAM_LEN];
 
-    /* cobi_wait_for_write(cobi_fd); */
+    cobi_wait_for_write(cobi_fd);
 
     // Prepare write data
 
@@ -612,36 +664,9 @@ void cobi_write_program(int cobi_fd, uint64_t *program)
     }
 }
 
-void print_spins(int *spins)
+int cobi_open_device(int device)
 {
-    printf("Spins: ");
-    for (int i = 0; i < 46; i++) {
-        printf("%c ", spins[i] == -1 ? '-' : '+');
-
-    }
-    printf("\n");
-}
-
-void print_program(uint64_t *program)
-{
-    printf("Serialized program (len %d):\n", PCI_PROGRAM_LEN);
-    for (int x = 0; x < PCI_PROGRAM_LEN; x++) {
-        printf("%16lX\n", program[x]);
-        }
-    printf("--\n");
-}
-
-typedef struct {
-    int Q[46][46];
-    int energy;
-    int spins[46];
-    int debug;
-} nums;
-
-void solveQ(nums* obj, int device) {
     char device_file[COBI_DEVICE_NAME_LEN];
-
-    srand(time(NULL));
 
     snprintf(device_file, COBI_DEVICE_NAME_LEN, COBI_DEVICE_NAME_TEMPLATE, device);
 
@@ -659,104 +684,130 @@ void solveQ(nums* obj, int device) {
         exit(2);
     }
 
-    // printf("Cobi chip initialized successfully\n");
+    return cobi_fd;
+}
 
-    CobiData *cbd = cobi_data_mk(COBI_NUM_SPINS, 1);
-    /* memset(cbd->chip1_output, 0, sizeof(uint8_t) * CHIP_OUTPUT_SIZE); */
+// Functions intended to be exported by python wrapper
 
-    int** weights = _malloc_array2d(COBI_NUM_SPINS, COBI_NUM_SPINS);
+void init_device(int device)
+{
+    int fd = cobi_open_device(device);
+    cobi_reset(fd);
+    close(fd);
+}
 
-    int i, j;
-    for (i = 0; i < COBI_NUM_SPINS; i++) {
-        for (j = 0; j < COBI_NUM_SPINS; j++) {
-            weights[i][j] = obj->Q[i][j];
-        }
-    }
+void submit_problem(int device, CobiInput *obj)
+{
+    uint8_t program_matrix[COBI_PROGRAM_MATRIX_HEIGHT][COBI_PROGRAM_MATRIX_WIDTH] = {0};
+    uint64_t serialized_program[PCI_PROGRAM_LEN] = {0};
 
     cobi_prepare_weights(
-        weights, COBI_SHIL_VAL, default_control_nibbles,
-         cbd->programming_bits
+        obj->Q, COBI_SHIL_VAL, default_control_nibbles,
+        program_matrix
     );
 
-    uint64_t *data_words = cobi_serialize_programming_bits(cbd->programming_bits);
+    cobi_serialize_programming_bits(program_matrix, serialized_program);
 
-    // printf("46 by 46 weight matrix:\n");
     if(obj->debug) {
         printf("Matrix to be programmed:\n");
-        print_array2d_uint8(cbd->programming_bits, COBI_PROGRAM_MATRIX_WIDTH, COBI_PROGRAM_MATRIX_HEIGHT);
+        print_program_matrix(program_matrix);
+        print_program(serialized_program);
     }
 
-    if(obj->debug){
-       printf("Serialization of programming bits:\n");
-       /* print_program(data_words); */
-       for (int i = 0; i < PCI_PROGRAM_LEN; i++) {
-          printf("0X%08lX,", data_words[i]);
-          if (i % 7  == 6) {
-             printf("\n");
-          }
-       }
-       printf("\n");
-    }
+    int cobi_fd = cobi_open_device(device);
+    cobi_write_program(cobi_fd, serialized_program);
+    close(cobi_fd);
+}
 
-    double startTime = omp_get_wtime();
-    for (int i = 0; i < 1; i++) {
-        cobi_write_program(cobi_fd, data_words);
-    }
-    /* usleep(100); */
-
-    cobi_read(cobi_fd, cbd, 1);
-    double finalTime = omp_get_wtime();
-
-    // TMP
-    CobiOutput *output = cbd->chip_output[0];
-
-    if(obj->debug){
-        printf("Wall time: %f\n", finalTime - startTime);
-        printf("omp tick: %f\n", omp_get_wtick());
-        // printf("Descend: %d\n", cbd->descend);
-
-        printf("\nParsed output:\n--\n");
-        printf("Problem id: %d\n", output->problem_id);
-        printf("Core id: %d\n", output->core_id);
-
-        printf("Energy: %d\n", output->energy);
-        print_spins(output->spins);
-    }
-
-    for (int i=0; i<46; i++)
-        obj->spins[i] = output->spins[i];
-    obj->energy = output->energy;
-
-    cobi_reset(cobi_fd);
+// Read a single result if one is available.
+int read_result(int device, CobiOutput *result, bool wait_for_result)
+{
+    int cobi_fd = cobi_open_device(device);
+    int result_count = cobi_read(cobi_fd, result, wait_for_result);
     close(cobi_fd);
 
-    free_cobi_data(cbd);
+    return result_count;
+}
+
+void solveQ(int device, CobiInput* obj, CobiOutput *result)
+{
+    uint8_t program_matrix[COBI_PROGRAM_MATRIX_HEIGHT][COBI_PROGRAM_MATRIX_WIDTH] = {0};
+    uint64_t serialized_program[PCI_PROGRAM_LEN] = {0};
+
+    double startTime = omp_get_wtime();
+
+    // Prepare problem
+
+    cobi_prepare_weights(
+        obj->Q, COBI_SHIL_VAL, default_control_nibbles, program_matrix
+    );
+
+    cobi_serialize_programming_bits(program_matrix, serialized_program);
+
+    if(obj->debug) {
+        printf("Matrix to be programmed:\n");
+        print_program_matrix(program_matrix);
+        print_program(serialized_program);
+    }
+
+    // Open device
+
+    int cobi_fd = cobi_open_device(device);
+    cobi_reset(cobi_fd);
+
+    // Write problem to device
+
+    for (int i = 0; i < 1; i++) {
+        cobi_write_program(cobi_fd, serialized_program);
+    }
+
+    /* submit_problem(obj, device); */
+
+    // Wait for and read output
+    int result_count = cobi_read(cobi_fd, result, true);
+    double finalTime = omp_get_wtime();
+
+    if(obj->debug){
+        /* int num_to_read = cobi_get_result_count(cobi_fd); */
+        /* printf("Read FIFO count: %d\n", num_to_read); */
+        printf("%d results read\n", result_count);
+
+        printf("Wall time: %f\n", finalTime - startTime);
+        /* printf("omp tick: %f\n", omp_get_wtick()); */
+
+        printf("\nParsed output:\n--\n");
+        printf("Problem id: %d\n", result->problem_id);
+        printf("Core id: %d\n", result->core_id);
+        printf("Energy: %d\n", result->energy);
+        printf("--\n");
+        print_spins(result->spins);
+    }
+
+    // Clean up
+
+    close(cobi_fd);
 }
 
 int main()
 {
     srand(time(NULL));
 
-    nums obj;
+    CobiInput obj;
     obj.debug = 1;
 
-    /* int **weights = _gen_rand_array2d(46,46); */
     int w = 46;
     int h = 46;
 
+    // generate random problem
     int density_percentile = 25;
     for (int i = 0; i < h; i++) {
         for (int j = 0; j < w; j++) {
-            if (rand() % 100 < density_percentile) {
+             if (i == j) {
                 obj.Q[i][j] = _rand_int_normalized();
-            } else if (i == j) {
+            } else if (rand() % 100 < density_percentile) {
                 obj.Q[i][j] = _rand_int_normalized();
             } else {
                 obj.Q[i][j] = 0;
-            }
-
-            if (rand() % 2 == 1) {
-                obj.Q[i][j] *= -1;
             }
         }
     }
@@ -770,37 +821,19 @@ int main()
     }
     printf("--\n");
 
-    solveQ(&obj, 0);
+    int dev_num = 1;
+
+    CobiOutput output;
+    solveQ(dev_num, &obj, &output);
+
+    /* submit_problem(obj, dev_num); */
+
 
     printf("\noutput:\n");
-    printf("energy: %d\n", obj.energy);
-    print_spins(obj.spins);
+    printf("energy: %d\n", output.energy);
+    printf("Problem id: %d\n", output.problem_id);
+    printf("Core id: %d\n", output.core_id);
+    print_spins(output.spins);
     printf("--\n");
     return 0;
 }
-
-/* void main() */
-/* { */
-/*     nums obj; */
-/*     obj.debug = 1; */
-
-/*     /\* int **weights = _gen_rand_array2d(46,46); *\/ */
-/*     int w = 46; */
-/*     int h = 46; */
-/*     for (int i = 0; i < w; i++) { */
-/*         for (int j = 0; j < h; j++) { */
-/*             obj.Q[i][j] = _rand_int_normalized(); */
-/*         } */
-/*     } */
-
-/*     printf("input:\n"); */
-/*     print_array2d(obj.Q, 46, 46); */
-/*     printf("--\n"); */
-
-/*     solveQ(&obj, 0); */
-
-/*     printf("\noutput:\n"); */
-/*     printf("energy: %d\n", obj.energy); */
-/*     print_spins(obj.spins); */
-/*     printf("--\n"); */
-/* } */

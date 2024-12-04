@@ -6,7 +6,7 @@ from collections import defaultdict
 from dimod.utilities import qubo_to_ising
 from math import ceil,log2
 from time import time
-from wrapper import w_solveQ
+from wrapper import w_solveQ, w_submit_problem, w_read_result, w_read_result_blocking
 
 input_dir = "./QUICC_Datasets_3SAT/batch-03"
 filename = "3block-like-rand-00000-0027"
@@ -17,14 +17,14 @@ SOLVER_SPINS = 45
 HWDEBUG = 0
 LF_SIZE = 1
 SCALE = 4
-DEVICE = 0
+DEVICE = 1
 # 0 for "/dev/cobi_pcie_card0"
 # 1 for "/dev/cobi_pcie_card1"
 # 2 for "/dev/cobi_pcie_card2"
 # 3 for "/dev/cobi_pcie_card3"
 
 
-def cobi_sample(Q_orig, vars_init=[], HWDEBUG, DEVICE):
+def cobi_sample(Q_orig, vars_init=[], HWDEBUG=False, DEVICE=0):
     variables = vars_init
     for (i,j),w in Q_orig.items():
         if w != 0:
@@ -52,10 +52,18 @@ def cobi_sample(Q_orig, vars_init=[], HWDEBUG, DEVICE):
                 J[ix, iy] = (SCALE*J[ix, iy])
             mtx[ix][iy] = mtx[iy][ix] = -J[ix, iy]
 
-    ising = {'Q': [[int(0)] * 46] * 46, 'energy': 0, 'spins': [0] * 46, 'debug': HWDEBUG}
+    ising = {'Q': [[int(0)] * 46] * 46, 'debug': HWDEBUG}
     ising['Q'] = mtx.tolist()
-    ising = w_solveQ(ising,DEVICE)
-    best_sample = ising["spins"]
+
+    # result = {'problem_id': 0, 'energy': 0, 'spins': [0] * 46, 'core_id':0}
+    # result = w_solveQ(ising,result,DEVICE)
+
+    w_submit_problem(DEVICE, ising)
+    result = w_read_result_blocking(DEVICE)
+
+    # print(result)
+
+    best_sample = result["spins"]
     best_sample.reverse()
     state_sample = {k_i:best_sample[k_i] for k_i in range(len(variables)+1)}
 
@@ -408,5 +416,9 @@ def main(input_dir,filename,extension,DEVICE):
     #print(f'{sat},{100*((valid_list)/len(cnf))},{iteration},{time()-time_start}')
     return sat,100*((valid_list)/len(cnf)),iteration,time()-time_start,hardware_time
 
+def __test():
+    res = main(input_dir,filename,extension,DEVICE)
+    return res
+
 if __name__=="__main__":
-    main(input_dir,filename,extension,DEVICE)
+    __test()
