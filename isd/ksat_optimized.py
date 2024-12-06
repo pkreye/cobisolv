@@ -421,4 +421,4 @@ def __test():
     return res
 
 if __name__=="__main__":
-    __test()
+    print(__test())
