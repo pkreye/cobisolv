@@ -826,9 +826,6 @@ int main()
     CobiOutput output;
     solveQ(dev_num, &obj, &output);
 
-    /* submit_problem(obj, dev_num); */
-
-
     printf("\noutput:\n");
     printf("energy: %d\n", output.energy);
     printf("Problem id: %d\n", output.problem_id);

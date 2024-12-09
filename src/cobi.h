@@ -11,6 +11,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
+#pragma once
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,6 +51,30 @@ extern "C" {
 
 #define COBI_FPGA_CONTROL_RESET 0
 
+#define COBI_EVAL_STRING_LEN 2 // min len needed to differentiate the eval options
+#define COBI_EVAL_STRING_SINGLE         "single"
+#define COBI_EVAL_STRING_DECOMP_INDEP   "indep"
+#define COBI_EVAL_STRING_DECOMP_DEP     "dep"
+#define COBI_EVAL_STRING_NORM_LINEAR    "linear"
+#define COBI_EVAL_STRING_NORM_SCALED    "scaled"
+#define COBI_EVAL_STRING_NORM_NONLINEAR "nonlinear"
+#define COBI_EVAL_STRING_NORM_MIXED     "mixed"
+
+typedef enum {
+    COBI_EVAL_SINGLE = 0,
+    COBI_EVAL_DECOMP_INDEP,
+    COBI_EVAL_DECOMP_DEP,
+    COBI_EVAL_NORM_LINEAR,
+    COBI_EVAL_NORM_SCALED,
+    COBI_EVAL_NORM_NONLINEAR,
+    COBI_EVAL_NORM_MIXED
+} CobiEvalStrat;
+
+typedef enum {
+    COBI_RESOLUTION_GREEDY,
+    COBI_RESOLUTION_MAJORITY
+} CobiResolutionStrat;
+
 typedef struct CobiOutput {
     int problem_id;
     int *spins;
@@ -62,7 +87,7 @@ typedef struct CobiData {
     size_t w;
     size_t h;
     uint8_t **programming_bits;
-    uint64_t *serialized_program;
+    /* uint64_t *serialized_program; */
     int serialized_len;
 
     size_t num_outputs;
@@ -77,6 +102,7 @@ typedef struct CobiSubSamplerParams {
     int device_id;
     int num_samples;
     bool descend;
+    CobiEvalStrat eval_strat;
     uint8_t shil_val;
     uint16_t cntrl_pid;
     uint16_t cntrl_dco;
@@ -93,6 +119,7 @@ int cobi_init(int*, int);
 void cobi_close(void);
 void cobi_solver(CobiSubSamplerParams *, double **, int, int8_t *);
 
+CobiEvalStrat cobi_parse_eval_strat(char *);
 // For testing: to be removed
 void __cobi_print_write_time();
 void __cobi_print_read_time();

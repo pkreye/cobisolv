@@ -23,11 +23,6 @@
 extern "C" {
 #endif
 
-uint32_t reverse_uint32(uint32_t val)
-{
-    int result = (0xFFFF0000 & val) >> 16 | (0x0000FFFF & val) << 16;
-}
-
 // create and pointer fill a 2d array of "size" for
 // X[rows][cols] addressing. Using only a single malloc
 void **malloc2D(uint rows, uint cols, uint size) {

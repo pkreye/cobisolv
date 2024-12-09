@@ -650,6 +650,7 @@ parameters_t default_parameters() {
     param.cobi_descend = false;
     param.num_sub_prob_threads = 1;
     param.cobi_parallel_repeat = false;
+    param.cobi_eval_strat = COBI_EVAL_SINGLE;
 
     // debug parameters
     param.cobi_card_num = -1; // don't use specific card
@@ -881,15 +882,16 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
             } else {
                 int change = 0;
 
-                // // TODO finish non-uniform subprob parallel support
+                // // TODO finish device parallelism support
                 // if (param->cobi_parallel_repeat == false) {
                 //     printf("use cobi_parallel_repeat option.. for now\n");
                 //     exit(1);
                 // }
 
-                //
-                int8_t **batch_solutions = (int8_t **)malloc2D(param->num_sub_prob_threads, qubo_size, sizeof(int8_t));
-                for (int j = 0; j < param->num_sub_prob_threads; j++) {
+                // TODO consider device parallelism for COBIFIVE
+                // int8_t **batch_solutions = (int8_t **)malloc2D(param->num_sub_prob_threads, qubo_size, sizeof(int8_t));
+                int8_t **batch_solutions = (int8_t **)malloc2D(1, qubo_size, sizeof(int8_t));
+                for (int j = 0; j < 1; j++) {
                     for (int i = 0; i < qubo_size; i++) {
                         batch_solutions[j][i] = solution[i];
                     }
@@ -925,13 +927,20 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                         }
                     }
 
-                    #pragma omp parallel for
-                    for (int device_num = 0; device_num < param->num_sub_prob_threads; device_num++) {
+                    // TODO consider multiboard parallelism for COBIFIVE
+                    // #pragma omp parallel for
+                    //for (int device_num = 0; device_num < param->num_sub_prob_threads; device_num++) {
                         int t_change = 0;
 
                         if (param->use_cobi) {
                             CobiSubSamplerParams cobi_sampler_params;
-                            cobi_sampler_params.device_id = device_num;
+                            if (param->cobi_card_num >= 0) {
+                                cobi_sampler_params.device_id = param->cobi_card_num; // device_num;
+                            } else {
+                                cobi_sampler_params.device_id = 0;
+                            }
+
+                            cobi_sampler_params.eval_strat = param->cobi_eval_strat;
                             cobi_sampler_params.num_samples = param->cobi_num_samples;
                             cobi_sampler_params.descend = param->cobi_descend;
                             cobi_sampler_params.shil_val = param->shil_val;
@@ -949,16 +958,16 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
 
                             p.sub_sampler_data = &cobi_sampler_params;
 
-                            t_change = reduce_solve_projection(Icompress, qubo, qubo_size, subMatrix, batch_solutions[device_num], &p);
+                            t_change = reduce_solve_projection(Icompress, qubo, qubo_size, subMatrix, batch_solutions[0], &p);
                         } else {
-                            t_change = reduce_solve_projection(Icompress, qubo, qubo_size, subMatrix, batch_solutions[device_num], param);
+                            t_change = reduce_solve_projection(Icompress, qubo, qubo_size, subMatrix, batch_solutions[0], param);
                         }
 
-                        #pragma omp critical
-                        {
+                        // #pragma omp critical
+                        // {
                             change = change + t_change;
-                        }
-                    }
+                        // }
+                    //}
 
                     numPartCalls++;
                 }
@@ -992,13 +1001,13 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                 // evaluate batch results and retain the best solution
                 double best_batch_energy = evaluate(batch_solutions[0], qubo_size, (const double **)qubo, flip_cost);
                 int best_batch_index = 0;
-                for (int device_num = 1; device_num < param->num_sub_prob_threads; device_num++) {
-                    double cur_energy = evaluate(batch_solutions[device_num], qubo_size, (const double **)qubo, flip_cost);
-                    if (cur_energy > best_batch_energy) {
-                        best_batch_index = device_num;
-                        best_batch_energy = cur_energy;
-                    }
-                }
+                // for (int device_num = 1; device_num < param->num_sub_prob_threads; device_num++) {
+                //     double cur_energy = evaluate(batch_solutions[device_num], qubo_size, (const double **)qubo, flip_cost);
+                //     if (cur_energy > best_batch_energy) {
+                //         best_batch_index = device_num;
+                //         best_batch_energy = cur_energy;
+                //     }
+                // }
 
                 for (int i = 0; i < qubo_size; i++) {
                     solution[i] = batch_solutions[best_batch_index][i];

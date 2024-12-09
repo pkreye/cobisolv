@@ -197,6 +197,25 @@ int *_malloc_array1d(int len)
 
 // TODO switch to using util.c's malloc2D in place of specifically typed mallocs
 
+void zero_array2d(int **a, int w, int h)
+{
+    for (int i = 0; i < h; i++) {
+        for (int j = 0; j < w; j++) {
+            a[i][j] = 0;
+        }
+    }
+}
+
+// TODO fix all the type based functions... quick hack is getting out of hand
+void zero_array2d_uint8(uint8_t **a, int w, int h)
+{
+    for (int i = 0; i < h; i++) {
+        for (int j = 0; j < w; j++) {
+            a[i][j] = 0;
+        }
+    }
+}
+
 double **_malloc_array2d_double(int w, int h)
 {
     double** a = (double**)malloc(sizeof(double *) * h);
@@ -329,7 +348,7 @@ void free_cobi_output(CobiOutput *o)
 void free_cobi_data(CobiData *d)
 {
     _free_array2d((void**)d->programming_bits, d->h);
-    free(d->serialized_program);
+    // free(d->serialized_program);
 
     for(size_t i = 0; i < d->num_outputs; i++) {
         free_cobi_output(d->chip_output[i]);
@@ -658,96 +677,94 @@ int bits_to_signed_int(uint8_t *bits, unsigned int num_bits)
     /* return (n & s - 1) - (n & s) */
 }
 
-void cobi_read(int cobi_id, CobiData *cobi_data, int num_to_read)
+void cobi_read(int cobi_id, CobiOutput *output)
 {
     uint32_t read_data;
     off_t read_offset;
     int num_read_bits = 32;
 
-    for (int read_count = 0; read_count < num_to_read; read_count++) {
-        cobi_wait_for_read(cobi_id);
+    cobi_wait_for_read(cobi_id);
 
-        CobiOutput *output = cobi_data->chip_output[read_count];
-        uint8_t bits[COBI_CHIP_OUTPUT_LEN] = {0};
+    uint8_t bits[COBI_CHIP_OUTPUT_LEN] = {0};
 
-        // Read one result from chip
-        for (int i = 0; i < COBI_CHIP_OUTPUT_READ_COUNT; ++i) {
-            read_offset = 4 * sizeof(uint32_t);
+    // Read one result from chip
+    for (int i = 0; i < COBI_CHIP_OUTPUT_READ_COUNT; ++i) {
+        read_offset = 4 * sizeof(uint32_t);
 
-            // Write read offset to device
-            if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
-                perror("Failed to set read offset in device");
-                exit(-3);
-            }
-
-            // Read data from device
-            if (read(cobi_fds[cobi_id], &read_data, sizeof(read_data)) != sizeof(read_data)) {
-                perror("Failed to read from device");
-                exit(-4);
-            }
-
-            if (i == COBI_CHIP_OUTPUT_READ_COUNT - 1) {
-                // Final read should have only 5 bits
-                num_read_bits = 5;
-            } else {
-                num_read_bits = 32;
-            }
-
-            for (int j = 0; j < num_read_bits; j++) {
-                uint32_t mask = 1 << j;
-
-                // combine data into bit array while reversing order of bits
-                bits[32 * i + j] = ((read_data & mask) >> j);
-            }
-
-            if (Verbose_ > 2) {
-                printf("Read data from cobi chip A at offset %ld: 0x%x\n", read_offset, read_data);
-            }
+        // Write read offset to device
+        if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+            perror("Failed to set read offset in device");
+            exit(-3);
         }
 
-        // Parse bits into CobiOutput
-
-        int bit_index = 0;
-
-        // Parse program id
-        output->problem_id = 0;
-        for (int i = 3; i >= 0; i--) {
-            output->problem_id |= bits[bit_index++] << i;
+        // Read data from device
+        if (read(cobi_fds[cobi_id], &read_data, sizeof(read_data)) != sizeof(read_data)) {
+            perror("Failed to read from device");
+            exit(-4);
         }
 
-        // Parse core id
-        output->core_id = 0;
-        for (int i = 3; i >= 0; i--) {
-            output->core_id |= bits[bit_index++] << i;
+        if (i == COBI_CHIP_OUTPUT_READ_COUNT - 1) {
+            // Final read should have only 5 bits
+            num_read_bits = 5;
+        } else {
+            num_read_bits = 32;
         }
 
-        // Parse spins, from bit 8 to bit 53
-        for (int i = 0; i < 46; i++) {
-            output->spins[i] = bits[bit_index++];
+        for (int j = 0; j < num_read_bits; j++) {
+            uint32_t mask = 1 << j;
+
+            // combine data into bit array while reversing order of bits
+            bits[32 * i + j] = ((read_data & mask) >> j);
         }
 
-        // if (Verbose_ > 1) {
-        //     // bit_index == 4+4+46 == 54;
-        //     printf("cobi_read::energy index 54 =? %d\n", bit_index);
-        // }
-
-        // Parse energy from last 15 bits
-        output->energy = bits_to_signed_int(&bits[bit_index], 15);
-
-        if (Verbose_ > 1) {
-            // bit_index == 4+4+46 == 54;
-            printf("cobi output: problem_id %d, core_id %d, energy %d, spins: [ ",
-                   output->problem_id, output->core_id, output->energy);
-            for (int i = 0; i < 46; i++) {
-                printf("%d", output->spins[i]);
-            }
-            printf(" ]\n");
+        if (Verbose_ > 2) {
+            printf("Read data from cobi chip A at offset %ld: 0x%x\n", read_offset, read_data);
         }
     }
+
+    // Parse bits into CobiOutput
+
+    int bit_index = 0;
+
+    // Parse program id
+    output->problem_id = 0;
+    for (int i = 3; i >= 0; i--) {
+        output->problem_id |= bits[bit_index++] << i;
+    }
+
+    // Parse core id
+    output->core_id = 0;
+    for (int i = 3; i >= 0; i--) {
+        output->core_id |= bits[bit_index++] << i;
+    }
+
+    // Parse spins, from bit 8 to bit 53
+    for (int i = 0; i < 46; i++) {
+        output->spins[i] = bits[bit_index++];
+    }
+
+    // if (Verbose_ > 1) {
+    //     // bit_index == 4+4+46 == 54;
+    //     printf("cobi_read::energy index 54 =? %d\n", bit_index);
+    // }
+
+    // Parse energy from last 15 bits
+    output->energy = bits_to_signed_int(&bits[bit_index], 15);
+
+    if (Verbose_ > 1) {
+        // bit_index == 4+4+46 == 54;
+        printf("cobi output: problem_id %d, core_id %d, energy %d, spins: [ ",
+               output->problem_id, output->core_id, output->energy);
+        for (int i = 0; i < 46; i++) {
+            printf("%d", output->spins[i]);
+        }
+        printf(" ]\n");
+    }
+    // }
 }
 
 int *cobi_test_multi_times(
-    int cobi_id, CobiData *cobi_data, int sample_times, int8_t *solution
+    int cobi_id, CobiData *cobi_data, uint64_t *serialized_program, int sample_times, int8_t *solution
 ) {
     int *all_results = _malloc_array1d(sample_times);
 
@@ -757,21 +774,21 @@ int *cobi_test_multi_times(
 
     double reftime = 0;
 
-    // TODO program device repeatedly based on sample_times
     reftime = omp_get_wtime();
 
     // Program chip once for each desired sample
     for (int i = 0; i < sample_times; i++) {
-        cobi_write_program(cobi_id, cobi_data->serialized_program);
+        cobi_write_program(cobi_id, serialized_program);
     }
 
     write_cum_time += omp_get_wtime() - reftime;
 
     reftime = omp_get_wtime();
-    cobi_read(cobi_id, cobi_data, sample_times); // TODO separate reading a single output from all
+    for(int i = 0; i < sample_times; i++) {
+        cobi_read(cobi_id, cobi_data->chip_output[i]);
+    }
     read_cum_time += omp_get_wtime() - reftime;
 
-    // TODO look at all output results
     for (int i = 0; i < sample_times; i++) {
         if (Verbose_ > 2) {
             printf("\nSample number %d\n", i);
@@ -794,7 +811,7 @@ int *cobi_test_multi_times(
                 _print_array2d_uint8(cobi_data->programming_bits, COBI_PROGRAM_MATRIX_WIDTH, COBI_PROGRAM_MATRIX_HEIGHT);
 
                 for (int i = 0; i < PCI_PROGRAM_LEN; i++) {
-                    printf("0X%16lX,", *cobi_data->serialized_program);
+                    printf("0X%16lX,", serialized_program[i]);
                     if (i % 7  == 6) {
                         printf("\n");
                     }
@@ -826,17 +843,127 @@ int *cobi_test_multi_times(
     return all_results;
 }
 
-// Normalize
-void cobi_norm_val(int **norm, double **ising, size_t size)
+// Normalization schemes
+// void cobi_norm_scaled(int **norm, double **ising, size_t size, double scale)
+// {
+//     const int WEIGHT_MAX = 14;
+//     const int WEIGHT_MIN = -14;
+//     for (size_t i = 0; i < size; i++) {
+//         for (size_t j = i; j < size; j++) {
+//             double cur_val = ising[i][j];
+//             if (cur_val == 0) {
+//                 norm[i][j] = 0;
+//                 norm[j][i] = 0;
+//                 continue;
+//             }
+//             // Non-zero case
+//             int scaled_val = round(scale * cur_val);
+//             if (cur_val > 0) {
+//                 scaled_val = MIN(scaled_val, WEIGHT_MAX);
+//             } else {
+//                 scaled_val = MAX(scaled_val, WEIGHT_MIN);
+//             }
+//             if (i == j) {
+//                 norm[i][i] = scaled_val;
+//             } else {
+//                 int symmetric_val = scaled_val / 2;
+//                 norm[i][j] = symmetric_val;
+//                 norm[j][i] = symmetric_val + (scaled_val % 2);
+//             }
+//         }
+//     }
+// }
+
+void cobi_norm_scaled(int **norm, double **ising, size_t size, double scale)
 {
-    // TODO consider alternate mapping/normalization schemes
+    // compress to avoid known hw bug
+    const int WEIGHT_MAX = 12;
+    const int WEIGHT_MIN = -12;
+    for (size_t i = 0; i < size; i++) {
+        for (size_t j = i; j < size; j++) {
+            double cur_val = ising[i][j];
+            if (cur_val == 0) {
+                norm[i][j] = 0;
+                norm[j][i] = 0;
+                continue;
+            }
+
+            // Non-zero case
+            int scaled_val = round(scale * cur_val);
+            if (cur_val > 0) {
+                scaled_val = MIN(scaled_val, WEIGHT_MAX);
+            } else {
+                scaled_val = MAX(scaled_val, WEIGHT_MIN);
+            }
+
+            if (i == j) {
+                norm[i][i] = scaled_val;
+
+                // if (norm[i][i] > 0) {
+                //     norm[i][i]--;
+                // } else {
+                //     norm[i][i]++;
+                // }
+            } else {
+                int symmetric_val = scaled_val / 2;
+                norm[i][j] = symmetric_val;
+                norm[j][i] = symmetric_val + (scaled_val % 2);
+
+                // // compress to avoid known hw bug
+                // if (norm[i][j] > 0) {
+                //     norm[i][j]--;
+                //     norm[j][i]--;
+                // } else {
+                //     norm[i][j]++;
+                //     norm[j][i]++;
+                // }
+
+            }
+        }
+    }
+}
+
+void cobi_norm_nonlinear(int **norm, double **ising, size_t size, double scale)
+{
+    const int WEIGHT_MAX = 14;
+    const int WEIGHT_MIN = -14;
+    for (size_t i = 0; i < size; i++) {
+        for (size_t j = i; j < size; j++) {
+            double cur_val = ising[i][j];
+            if (cur_val == 0) {
+                norm[i][j] = 0;
+                norm[j][i] = 0;
+            } else {
+                // Non-zero case
+                cur_val = scale * cur_val;
+                double fsig = (cur_val / (1.0 + abs(cur_val)));
+                int scaled_val = round(WEIGHT_MAX * fsig);
+                if (cur_val > 0) {
+                    scaled_val = MIN(scaled_val, WEIGHT_MAX);
+                } else {
+                    scaled_val = MAX(scaled_val, WEIGHT_MIN);
+                }
+
+                if (i == j) {
+                    norm[i][i] = scaled_val;
+                } else {
+                    int symmetric_val = scaled_val / 2;
+                    norm[i][j] = symmetric_val;
+                    norm[j][i] = symmetric_val + (scaled_val % 2);
+                }
+            }
+        }
+    }
+}
+
+void cobi_norm_linear(int **norm, double **ising, size_t size, double scale)
+{
     double min = 0;
     double max = 0;
     double cur_v = 0;
 
-    size_t i,j;
-    for (i = 0; i < size; i++) {
-        for (j = 0; j < size; j++) {
+    for (size_t i = 0; i < size; i++) {
+        for (size_t j = i; j < size; j++) {
             cur_v = ising[i][j];
 
             if (cur_v > max) max = cur_v;
@@ -848,38 +975,85 @@ void cobi_norm_val(int **norm, double **ising, size_t size)
     // (y + 14) / (x - min) = 28 / (max - min)
     // y = (28 / (max - min)) * (x - min) - 14
 
-    const double upscale_factor = 1.5;
+    /* const double upscale_factor = 1.5; */
     const int top = 14;
     const int bot = -14;
     const int range = top - bot;
 
-    for (i = 0; i < size; i++) {
-        for (j = i; j < size; j++) {
+    for (size_t i = 0; i < size; i++) {
+        for (size_t j = i; j < size; j++) {
             cur_v = ising[i][j];
 
             // linearly interpolate and upscale
-            int scaled_v = round(
-                upscale_factor * ((range * (cur_v - min) / (max - min)) - top)
+            int scaled_val = round(
+                scale * ((range * (cur_v - min) / (max - min)) - top)
             );
 
             // clamp
-            if (scaled_v < 0 && scaled_v < bot) {
-                scaled_v = bot;
-            } else if (scaled_v > 0 && scaled_v > top) {
-                scaled_v = top;
+            if (scaled_val < 0 && scaled_val < bot) {
+                scaled_val = bot;
+            } else if (scaled_val > 0 && scaled_val > top) {
+                scaled_val = top;
             }
 
             if (cur_v == 0) {
                 norm[i][j] = 0;
                 norm[j][i] = 0;
             } else if (i == j) {
-                norm[i][i] = scaled_v;
+                norm[i][i] = scaled_val;
             } else {
-                int symmetric_val = round(scaled_v / 2);
+                int symmetric_val = scaled_val / 2;
                 norm[i][j] = symmetric_val;
-                norm[j][i] = symmetric_val;
+                norm[j][i] = symmetric_val + (scaled_val % 2);
             }
         }
+    }
+}
+
+void cobi_norm_val(
+    int **norm_ising, double **ising, size_t num_spins, CobiEvalStrat strat, int prob_num
+) {
+    switch (strat) {
+    case COBI_EVAL_NORM_LINEAR: {
+        const double scales[4] = {0.5, 1, 2, 4};
+        cobi_norm_linear(norm_ising, ising, num_spins, scales[prob_num]);
+        break;
+    }
+    case COBI_EVAL_NORM_SCALED: {
+        const double scales[4] = {0.5, 1, 2, 4};
+        cobi_norm_scaled(norm_ising, ising, num_spins, scales[prob_num]);
+        break;
+        }
+    case COBI_EVAL_NORM_NONLINEAR: {
+        const double scales[4] = {2, 1, 0.5, 0.1};
+        cobi_norm_nonlinear(norm_ising, ising, num_spins, scales[prob_num]);
+        break;
+    }
+    case COBI_EVAL_NORM_MIXED: {
+        switch (prob_num) {
+        case 0:
+            cobi_norm_nonlinear(norm_ising, ising, num_spins, 1);
+            break;
+        case 1:
+            cobi_norm_linear(norm_ising, ising, num_spins, 1);
+            break;
+        case 2:
+            cobi_norm_scaled(norm_ising, ising, num_spins, 2);
+            break;
+        case 3:
+            cobi_norm_nonlinear(norm_ising, ising, num_spins, 2);
+            break;
+        default:
+            perror("Bad prob num\n");
+            exit(1);
+            break;
+        }
+        break;
+    }
+    default:
+        // default to linear with no scaling
+        cobi_norm_linear(norm_ising, ising, num_spins, 1);
+        break;
     }
 }
 
@@ -1024,8 +1198,7 @@ int cobi_init(int *req_num_devices, int specific_card)
 }
 
 void cobi_solver(
-    CobiSubSamplerParams *params,
-    double **qubo, int num_spins, int8_t *qubo_solution
+    CobiSubSamplerParams *params, double **qubo, int num_spins, int8_t *qubo_solution
 ) {
     if (num_spins != COBI_WEIGHT_MATRIX_DIM) {
         printf(
@@ -1035,70 +1208,129 @@ void cobi_solver(
         exit(2);
     }
 
+    double reftime = 0;
+    int best_energy = 0;
+    int best_output = 0;
+
+    // TODO move away from using CobiData. Doesn't make much sense any more.
     CobiData *cobi_data = cobi_data_mk(num_spins, params->num_samples);
+
+    // TODO locally allocate/manage arrays for improved performance
+
     int8_t *ising_solution = (int8_t*)malloc(sizeof(int8_t) * num_spins);
     double **ising = _malloc_array2d_double(num_spins, num_spins);
     int **norm_ising = _malloc_array2d_int(num_spins, num_spins);
+    int num_probs = 1;
 
+    // TODO handle logic better...
+    if (params->eval_strat != COBI_EVAL_SINGLE &&
+        params->eval_strat != COBI_EVAL_DECOMP_INDEP &&
+        params->eval_strat != COBI_EVAL_DECOMP_DEP)
+    {
+        // run 5 separately normalized problems
+        num_probs = 4;
+    }
+
+    // Convert problem from QUBO to Ising
     ising_from_qubo(ising, qubo, num_spins);
-    cobi_norm_val(norm_ising, ising, num_spins);
 
-    uint8_t *cntrl_nibbles = mk_control_nibbles(
-        params->cntrl_pid,
-        params->cntrl_dco,
-        params->cntrl_sample_delay,
-        params->cntrl_max_fails,
-        params->cntrl_rosc_time,
-        params->cntrl_shil_time,
-        params->cntrl_weight_time,
-        params->cntrl_sample_time
-    );
-
-    if (Verbose_ > 3) {
-        printf("--\n");
-        _print_array1d_uint8(cntrl_nibbles, COBI_CONTROL_NIBBLES_LEN);
-
-        printf("Normalized ising:\n");
-        _print_array2d_int(norm_ising, COBI_WEIGHT_MATRIX_DIM, COBI_WEIGHT_MATRIX_DIM);
-        printf("--\n");
-    }
-
-    cobi_prepare_weights(
-        norm_ising, params->shil_val,
-        cntrl_nibbles, cobi_data->programming_bits
-    );
-
-    if (Verbose_ > 3) {
-        printf("Program:\n");
-        _print_array2d_uint8(
-            cobi_data->programming_bits, COBI_PROGRAM_MATRIX_WIDTH, COBI_PROGRAM_MATRIX_HEIGHT
-        );
-        printf("--\n");
-    }
-
-    cobi_data->serialized_program = cobi_serialize_programming_bits(
-        cobi_data->programming_bits
-    );
-
-    if (Verbose_ > 3) {
-        _print_program(cobi_data->serialized_program);
-    }
-
-    // Convert solution from QUBO to ising
+    // Convert solution from QUBO to Ising
     ising_solution_from_qubo_solution(ising_solution, qubo_solution, num_spins);
 
-    int *results = cobi_test_multi_times(
-        params->device_id, cobi_data, params->num_samples, ising_solution
-    );
+    for (int prob_num = 0; prob_num < num_probs; prob_num++) {
+
+        // TODO shouldn't need to zero matrix every time. Being safe for now.
+        zero_array2d(norm_ising, num_spins, num_spins);
+        zero_array2d_uint8(cobi_data->programming_bits, num_spins, num_spins);
+
+        cobi_norm_val(norm_ising, ising, num_spins, params->eval_strat, prob_num);
+
+        uint8_t *cntrl_nibbles = mk_control_nibbles(
+            prob_num,
+            params->cntrl_dco,
+            params->cntrl_sample_delay,
+            params->cntrl_max_fails,
+            params->cntrl_rosc_time,
+            params->cntrl_shil_time,
+            params->cntrl_weight_time,
+            params->cntrl_sample_time
+        );
+
+        if (Verbose_ > 3) {
+            printf("--\n");
+            _print_array1d_uint8(cntrl_nibbles, COBI_CONTROL_NIBBLES_LEN);
+
+            printf("Normalized ising:\n");
+            _print_array2d_int(norm_ising, COBI_WEIGHT_MATRIX_DIM, COBI_WEIGHT_MATRIX_DIM);
+            printf("--\n");
+        }
+
+        cobi_prepare_weights(
+            norm_ising, params->shil_val,
+            cntrl_nibbles, cobi_data->programming_bits
+        );
+
+        if (Verbose_ > 3) {
+            printf("Program:\n");
+            _print_array2d_uint8(
+                cobi_data->programming_bits, COBI_PROGRAM_MATRIX_WIDTH, COBI_PROGRAM_MATRIX_HEIGHT
+            );
+            printf("--\n");
+        }
+
+        uint64_t *serialized_program = cobi_serialize_programming_bits(
+            cobi_data->programming_bits
+        );
+
+        if (Verbose_ > 3) {
+            _print_program(serialized_program);
+        }
+
+        reftime = omp_get_wtime();
+        cobi_write_program(params->device_id, serialized_program);
+        write_cum_time += omp_get_wtime() - reftime;
+        // int *results = cobi_test_multi_times(
+        //     params->device_id, cobi_data, params->num_samples, ising_solution
+        // );
+
+        free(serialized_program);
+        free(cntrl_nibbles);
+    }
+
+
+    // Read out results
+    reftime = omp_get_wtime();
+    for (int i = 0; i < num_probs; i++) {
+        cobi_read(params->device_id, cobi_data->chip_output[i]);
+        if (cobi_data->chip_output[i]->energy < best_energy) {
+            best_energy = cobi_data->chip_output[i]->energy;
+            best_output = i;
+        }
+    }
+    read_cum_time += omp_get_wtime() - reftime;
+
+    if (Verbose_ > 1) {
+        printf("TEST::Best problem: %d, energy %d\n",
+               cobi_data->chip_output[best_output]->problem_id,
+               cobi_data->chip_output[best_output]->energy
+              );
+    }
+
+    // Copy best result into solution
+    for (size_t i = 0; i < cobi_data->probSize; i++) {
+        // map binary spins to {-1,1} values
+        ising_solution[i] = cobi_data->chip_output[best_output]->spins[i] == 0 ? 1 : -1;
+    }
 
     // Convert ising solution back to QUBO form
     qubo_solution_from_ising_solution(qubo_solution, ising_solution, num_spins);
 
-    free(results);
+    // free(results);
     free_cobi_data(cobi_data);
     free(ising_solution);
     _free_array2d((void**)ising, num_spins);
     _free_array2d((void**)norm_ising, num_spins);
+
 }
 
 // cobi_close should be registered by main to run via `atexit`
@@ -1112,6 +1344,29 @@ void cobi_close()
     for (int i = 0; i < cobi_num_open; i++) {
         close(cobi_fds[i]);
     }
+}
+
+CobiEvalStrat cobi_parse_eval_strat(char *str)
+{
+    // default value
+    CobiEvalStrat strat = COBI_EVAL_SINGLE;
+
+    if (!strncmp(str, COBI_EVAL_STRING_SINGLE, COBI_EVAL_STRING_LEN)) {
+        strat = COBI_EVAL_SINGLE;
+    } else if (!strncmp(str, COBI_EVAL_STRING_DECOMP_INDEP, COBI_EVAL_STRING_LEN)) {
+        strat = COBI_EVAL_DECOMP_INDEP;
+    } else if (!strncmp(str, COBI_EVAL_STRING_DECOMP_DEP, COBI_EVAL_STRING_LEN)) {
+        strat = COBI_EVAL_DECOMP_DEP;
+    } else if (!strncmp(str, COBI_EVAL_STRING_NORM_LINEAR, COBI_EVAL_STRING_LEN)) {
+        strat = COBI_EVAL_NORM_LINEAR;
+    } else if (!strncmp(str, COBI_EVAL_STRING_NORM_SCALED, COBI_EVAL_STRING_LEN)) {
+        strat = COBI_EVAL_NORM_SCALED;
+    } else if (!strncmp(str, COBI_EVAL_STRING_NORM_NONLINEAR, COBI_EVAL_STRING_LEN)) {
+        strat = COBI_EVAL_NORM_NONLINEAR;
+    } else if (!strncmp(str, COBI_EVAL_STRING_NORM_MIXED, COBI_EVAL_STRING_LEN)) {
+        strat = COBI_EVAL_NORM_MIXED;
+    }
+    return strat;
 }
 
 #ifdef __cplusplus

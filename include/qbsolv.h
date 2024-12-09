@@ -16,6 +16,7 @@
 
 #include "stdheaders_shim.h"
 #include <stdbool.h>
+#include "cobi.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,12 +47,13 @@ typedef struct parameters_t {
 
     int num_sub_prob_threads;
 
-
     bool use_cobi;
     int cobi_delay;
     int cobi_num_samples;
     bool cobi_descend;
     bool cobi_parallel_repeat;
+
+    CobiEvalStrat cobi_eval_strat;
 
     int64_t seed;
 

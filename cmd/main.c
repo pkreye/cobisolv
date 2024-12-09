@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
                                        {"cobiNumSamples", required_argument, NULL, 'z'},
                                        {"numOutputSolutions", required_argument, NULL, 'N'},
                                        {"parallelCobi", optional_argument, NULL, 'P'},
-
+                                       {"evalStrat", required_argument, NULL, 'e'},
                                        // Debug params
                                        {"pid", required_argument, NULL, GETOPT_PID},
                                        {"dco", required_argument, NULL, GETOPT_DCO},
@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
     int opt, option_index = 0;
     char *chx;               // used as exit ptr in strto(x) functions
 
-    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:Cdz:N:P::", longopts, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "Hhi:o:v:VS:T:l:n:wmo:t:qr:a:p:g:Cdz:N:P::e:", longopts, &option_index)) != -1) {
         switch (opt) {
             case 'a':
                 strcpy(algo_, optarg);  // algorithm copied off of command line -a option
@@ -272,19 +272,28 @@ int main(int argc, char *argv[]) {
                 param.cobi_descend = true;
                 break;
 
-            case 'P':
-                param.cobi_parallel_repeat = true; //
-                param.num_sub_prob_threads = -1;
-                // Handle whitespace before optional argument
-                if (optarg == NULL && optind < argc && argv[optind][0] != '-')
-                {
-                    optarg = argv[optind++];
-                }
-
-                if (optarg != NULL) {
-                    param.num_sub_prob_threads = strtol(optarg, &chx, 10);
-                }
+            case 'e':
+                /* printf("Eval strat input \"%s\"\n", optarg); */
+                param.cobi_eval_strat = cobi_parse_eval_strat(optarg);
+                /* printf("strat: %d\n", param.eval_strat); */
+                /* exit(1); */
                 break;
+
+            case 'P':
+                // Device parallelism currently not supported with COBIFIVE
+                /* param.cobi_parallel_repeat = true; // */
+                /* param.num_sub_prob_threads = -1; */
+                /* // Handle whitespace before optional argument */
+                /* if (optarg == NULL && optind < argc && argv[optind][0] != '-') */
+                /* { */
+                /*     optarg = argv[optind++]; */
+                /* } */
+
+                /* if (optarg != NULL) { */
+                /*     param.num_sub_prob_threads = strtol(optarg, &chx, 10); */
+                /* } */
+                break;
+
 
             // debug
             case GETOPT_PID:
