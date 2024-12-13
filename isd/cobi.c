@@ -418,31 +418,31 @@ void cobi_prepare_weights(
 //
 // @param prog_nibs The matrix to be programmed, assumed to be a 2d array of nibbles
 // @param serialized output is stored as serialized array of 64 bit chunks
-void cobi_serialize_programming_bits(uint8_t prog_nibs[][COBI_PROGRAM_MATRIX_WIDTH], uint64_t serialized[PCI_PROGRAM_LEN])
-{
-    /* uint64_t *serialized = (uint64_t*)malloc(PCI_PROGRAM_LEN * sizeof(uint64_t)); */
-
+void cobi_serialize_programming_bits(
+    uint8_t prog_nibs[][COBI_PROGRAM_MATRIX_WIDTH], uint64_t serialized[PCI_PROGRAM_LEN]
+) {
     int serial_index = 0;
 
     int cur_nib_count = 0;
     uint64_t cur_val = 0;
 
-    for (int row = 0; row < COBI_PROGRAM_MATRIX_HEIGHT; row++) {
-        for (int col = COBI_PROGRAM_MATRIX_WIDTH - 1; col >= 0; col--) {
-            cur_val |= ((uint64_t) prog_nibs[row][col] << (4 * cur_nib_count));
+    cur_nib_count = 4; // account for padding to align with a multiple of 64
+
+    // Iterate through matrix in reverse row order
+    for (int row = COBI_PROGRAM_MATRIX_HEIGHT - 1; row >= 0; row--) {
+
+        for (int col = 0; col < COBI_PROGRAM_MATRIX_WIDTH; col++) {
+            cur_val = (cur_val << 4) | ((uint64_t) prog_nibs[row][col]);
             cur_nib_count++;
 
             if (cur_nib_count == 16) {
-                serialized[serial_index++] = cur_val;
+                // Build serial array in reverse
+                serialized[PCI_PROGRAM_LEN - 1 - serial_index] = cur_val;
+                serial_index++;
                 cur_val = 0;
                 cur_nib_count = 0;
             }
         }
-    }
-
-    if (cur_nib_count != 0) {
-        // Add last 16 nib number
-        serialized[serial_index++] = cur_val;
     }
 }
 

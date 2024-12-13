@@ -402,11 +402,6 @@ uint8_t hex_mapping(int val)
 // returns data in serialized array of 64 bit chunks
 uint64_t *cobi_serialize_programming_bits(uint8_t **prog_nibs)
 {
-    if (Verbose_ > 5) {
-        printf("Serialized program into %d 64bit chunks\n", PCI_PROGRAM_LEN);
-    }
-
-
     uint64_t *serialized = (uint64_t*)malloc(PCI_PROGRAM_LEN * sizeof(uint64_t));
 
     int serial_index = 0;
@@ -414,44 +409,27 @@ uint64_t *cobi_serialize_programming_bits(uint8_t **prog_nibs)
     int cur_nib_count = 0;
     uint64_t cur_val = 0;
 
-    for (int row = 0; row < COBI_PROGRAM_MATRIX_HEIGHT; row++) {
-        for (int col = COBI_PROGRAM_MATRIX_WIDTH - 1; col >= 0; col--) {
-            cur_val |= ((uint64_t) prog_nibs[row][col] << (4 * cur_nib_count));
+    cur_nib_count = 4; // account for padding to align with a multiple of 64
+
+    // Iterate through matrix in reverse row order
+    for (int row = COBI_PROGRAM_MATRIX_HEIGHT - 1; row >= 0; row--) {
+
+        for (int col = 0; col < COBI_PROGRAM_MATRIX_WIDTH; col++) {
+            cur_val = (cur_val << 4) | ((uint64_t) prog_nibs[row][col]);
             cur_nib_count++;
 
-            if (Verbose_ > 5) {
-                printf("nib %x; cur_val[%d] %lx\n", prog_nibs[row][col], cur_nib_count-1, cur_val);
-            }
-
             if (cur_nib_count == 16) {
-                if (Verbose_ > 5) {
-                    printf("Adding val %lx\n", cur_val);
-                }
-                serialized[serial_index++] = cur_val;
+                // Build serial array in reverse
+                serialized[PCI_PROGRAM_LEN - 1 - serial_index] = cur_val;
+                serial_index++;
                 cur_val = 0;
                 cur_nib_count = 0;
             }
         }
     }
-    if (Verbose_ > 5) {
-        printf("adding nib cur_val %lx\n", cur_val);
-    }
-
-    if (cur_nib_count != 0) {
-        // Add last 16 nib number
-        serialized[serial_index++] = cur_val;
-    }
-
-    if (Verbose_ > 5) {
-        printf("output:\n");
-        for (int i = 0; i < PCI_PROGRAM_LEN; i++) {
-            printf("0x%lX\n", serialized[i]);
-        }
-    }
 
     return serialized;
 }
-
 
 // @param weights 2d array of ints, values must be in range -7 to 7
 // Assume program_array was already initialized to 0
@@ -1023,7 +1001,7 @@ void cobi_norm_val(
         const double scales[4] = {0.5, 1, 2, 4};
         cobi_norm_scaled(norm_ising, ising, num_spins, scales[prob_num]);
         break;
-        }
+    }
     case COBI_EVAL_NORM_NONLINEAR: {
         const double scales[4] = {2, 1, 0.5, 0.1};
         cobi_norm_nonlinear(norm_ising, ising, num_spins, scales[prob_num]);
@@ -1220,14 +1198,12 @@ void cobi_solver(
     int8_t *ising_solution = (int8_t*)malloc(sizeof(int8_t) * num_spins);
     double **ising = _malloc_array2d_double(num_spins, num_spins);
     int **norm_ising = _malloc_array2d_int(num_spins, num_spins);
-    int num_probs = 1;
 
-    // TODO handle logic better...
-    if (params->eval_strat != COBI_EVAL_SINGLE &&
-        params->eval_strat != COBI_EVAL_DECOMP_INDEP &&
-        params->eval_strat != COBI_EVAL_DECOMP_DEP)
-    {
-        // run 5 separately normalized problems
+    int num_probs; // to be run in parallel
+
+    if (params->eval_strat == COBI_EVAL_SINGLE) {
+        num_probs = 1;
+    } else {
         num_probs = 4;
     }
 
@@ -1351,8 +1327,8 @@ CobiEvalStrat cobi_parse_eval_strat(char *str)
     // default value
     CobiEvalStrat strat = COBI_EVAL_SINGLE;
 
-    if (!strncmp(str, COBI_EVAL_STRING_SINGLE, COBI_EVAL_STRING_LEN)) {
-        strat = COBI_EVAL_SINGLE;
+    if (!strncmp(str, COBI_EVAL_STRING_DECOMP_INDEP, COBI_EVAL_STRING_LEN)) {
+        strat = COBI_EVAL_NAIVE;
     } else if (!strncmp(str, COBI_EVAL_STRING_DECOMP_INDEP, COBI_EVAL_STRING_LEN)) {
         strat = COBI_EVAL_DECOMP_INDEP;
     } else if (!strncmp(str, COBI_EVAL_STRING_DECOMP_DEP, COBI_EVAL_STRING_LEN)) {
@@ -1365,6 +1341,8 @@ CobiEvalStrat cobi_parse_eval_strat(char *str)
         strat = COBI_EVAL_NORM_NONLINEAR;
     } else if (!strncmp(str, COBI_EVAL_STRING_NORM_MIXED, COBI_EVAL_STRING_LEN)) {
         strat = COBI_EVAL_NORM_MIXED;
+    } else if (!strncmp(str, COBI_EVAL_STRING_SINGLE, COBI_EVAL_STRING_LEN)) {
+        strat = COBI_EVAL_SINGLE;
     }
     return strat;
 }

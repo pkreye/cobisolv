@@ -650,7 +650,7 @@ parameters_t default_parameters() {
     param.cobi_descend = false;
     param.num_sub_prob_threads = 1;
     param.cobi_parallel_repeat = false;
-    param.cobi_eval_strat = COBI_EVAL_SINGLE;
+    param.cobi_eval_strat = COBI_EVAL_NAIVE;
 
     // debug parameters
     param.cobi_card_num = -1; // don't use specific card

@@ -52,6 +52,7 @@ extern "C" {
 #define COBI_FPGA_CONTROL_RESET 0
 
 #define COBI_EVAL_STRING_LEN 2 // min len needed to differentiate the eval options
+#define COBI_EVAL_STRING_NAIVE          "naive"
 #define COBI_EVAL_STRING_SINGLE         "single"
 #define COBI_EVAL_STRING_DECOMP_INDEP   "indep"
 #define COBI_EVAL_STRING_DECOMP_DEP     "dep"
@@ -61,7 +62,8 @@ extern "C" {
 #define COBI_EVAL_STRING_NORM_MIXED     "mixed"
 
 typedef enum {
-    COBI_EVAL_SINGLE = 0,
+    COBI_EVAL_NAIVE = 0,
+    COBI_EVAL_SINGLE,
     COBI_EVAL_DECOMP_INDEP,
     COBI_EVAL_DECOMP_DEP,
     COBI_EVAL_NORM_LINEAR,
