@@ -925,7 +925,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
                         }
                     }
 
-                    #pragma omp parallel for
+                    #pragma omp parallel for num_threads(param->num_sub_prob_threads)
                     for (int device_num = 0; device_num < param->num_sub_prob_threads; device_num++) {
                         int t_change = 0;
 
