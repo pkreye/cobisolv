@@ -42,13 +42,13 @@ typedef struct {
 } pci_write_data;
 
 typedef struct CobiInput{
-    int Q[46][46];
+    int Q[COBI_NUM_SPINS][COBI_NUM_SPINS];
     int debug;
 } CobiInput;
 
 typedef struct CobiOutput {
     int problem_id;
-    int spins[46];
+    int spins[COBI_NUM_SPINS];
     int energy;
     int core_id;
 } CobiOutput;

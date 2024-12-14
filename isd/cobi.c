@@ -535,14 +535,15 @@ int cobi_read(int cobi_fd, CobiOutput *result, bool wait_for_result)
         }
 
         // Parse spins, from bit index 8 to 53
-        for (int i = 0; i < 46; i++) {
-            result->spins[i] = bits[bit_index++] == 0 ? 1 : -1;
+        for (int i = 0; i < COBI_NUM_SPINS; i++) {
+            // reverse order of spins
+            result->spins[COBI_NUM_SPINS - 1 - i] = bits[bit_index++] == 0 ? 1 : -1;
         }
 
         // Parse energy from last 15 bits
         result->energy = bits_to_signed_int(&bits[bit_index], 15);
 
-        // check if there is another result ready
+        // check if another result is ready
         result_ready = cobi_has_result(cobi_fd);
     }
 
