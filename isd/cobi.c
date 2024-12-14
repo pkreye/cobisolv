@@ -7,80 +7,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
-
 #include <omp.h>
 
-#define PCI_PROGRAM_LEN 166 // 166 * 64bits = (51 * 52 + 4(dummy bits)) * 4bits
-
-#define COBI_DEVICE_NAME_LEN 22 // assumes 2 digit card number and null byte
-#define COBI_DEVICE_NAME_TEMPLATE "/dev/cobi_pcie_card%hhu"
-
-#define COBI_NUM_SPINS 45 // Doesn't count the local field spin
-#define COBI_PROGRAM_MATRIX_HEIGHT 51
-#define COBI_PROGRAM_MATRIX_WIDTH 52
-
-#define COBI_SHIL_VAL 0
-#define COBI_SHIL_INDEX 22 // index of first SHIL row/col in 2d program array
-
-#define COBI_CHIP_OUTPUT_READ_COUNT 3 // number of reads needed to get a full output
-#define COBI_CHIP_OUTPUT_LEN 69  // number of bits in a full output
-
-#define COBI_CONTROL_NIBBLES_LEN 52
-
-// FPGA
-
-#define COBI_FPGA_ADDR_READ 4
-#define COBI_FPGA_ADDR_CONTROL 8
-#define COBI_FPGA_ADDR_WRITE 9
-#define COBI_FPGA_ADDR_STATUS 10
-
-#define COBI_FPGA_STATUS_MASK_STATUS 1          // 1 == Controller is busy
-#define COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY 2 // 1 == Read FIFO Empty
-#define COBI_FPGA_STATUS_MASK_READ_FIFO_FULL  4 // 1 == Read FIFO Full
-#define COBI_FPGA_STATUS_MASK_S_READY 8         // 1 == ready to receive data
-#define COBI_FPGA_STATUS_MASK_READ_COUNT 0x7F0  // Read FIFO Count
-
-#define COBI_FPGA_STATUS_VALUE_S_READY 8
-
-#define COBI_FPGA_CONTROL_RESET 0
-
-// -- Data structs --
-
-typedef struct {
-    off_t offset;
-    uint64_t value;
-} pci_write_data;
-
-typedef struct CobiInput{
-    int Q[46][46];
-    int debug;
-} CobiInput;
-
-typedef struct CobiOutput {
-    int problem_id;
-    int spins[46];
-    int energy;
-    int core_id;
-} CobiOutput;
-
-typedef struct CobiData {
-    size_t probSize;
-    size_t w;
-    size_t h;
-    uint8_t **programming_bits;
-    uint64_t *serialized_program;
-    int serialized_len;
-
-    size_t num_outputs;
-    CobiOutput **chip_output;
-
-    uint32_t process_time;
-
-    int sample_test_count;
-} CobiData;
-
-// -- End data structs --
-
+#include "cobi.h"
 
 // -- Globals --
 
@@ -134,10 +63,9 @@ int bits_to_signed_int(uint8_t *bits, size_t num_bits)
 
 void print_array2d(int **a, int w, int h)
 {
-    int x, y;
-    for (x = 0; x < w; x++) {
-        for (y = 0; y < h; y++) {
-            printf("%2d ", a[x][y]);
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            printf("%2d ", a[y][x]);
         }
         printf("\n");
     }
@@ -379,37 +307,30 @@ void cobi_prepare_weights(
         program_array[COBI_PROGRAM_MATRIX_HEIGHT - COBI_SHIL_INDEX - 4][k] = mapped_shil_val;
     }
 
+    // zero main diagonal
+    for (int i = 0; i < COBI_PROGRAM_MATRIX_HEIGHT - 2; i++) {
+        program_array[i][COBI_PROGRAM_MATRIX_WIDTH - 1 - i] = 0;
+    }
+
     // populate weights
     int row;
     int col;
-    const int lfo_index_col = 3;
-    const int lfo_index_row = COBI_PROGRAM_MATRIX_HEIGHT - 3;
     for (int i = 0; i < COBI_NUM_SPINS; i++) {
         // the program matrix is flipped vertically relative to the weight matrix
-        if (i < COBI_SHIL_INDEX) {
-            row = COBI_PROGRAM_MATRIX_HEIGHT - 3 - i; // skip the control and calibration rows
+        if (i < COBI_SHIL_INDEX + 2) {
+            row = i + 1; // skip the calibration row
         } else {
-            row = COBI_PROGRAM_MATRIX_HEIGHT - 5 - i; // also skip the 2 shil rows
+            row = i + 3; // also skip the 2 shil rows
         }
 
         for (int j = 0; j < COBI_NUM_SPINS; j++) {
-            if (j < COBI_SHIL_INDEX) {
-                col = j + 3; // skip the 2 zero cols and calibration cols
+            if (j < COBI_SHIL_INDEX + 2) {
+                col = COBI_PROGRAM_MATRIX_WIDTH - 2 - j; // skip the calibration col
             } else {
-                col = j + 5; // also skip the 2 shil cols
+                col = COBI_PROGRAM_MATRIX_WIDTH - 4 - j; // also skip the 2 shil cols
             }
 
-            if (i == j) {
-                int split = weights[i][i] / 2;
-                int val1 = hex_mapping(split);
-                int val2 = hex_mapping(split + (weights[i][i] % 2));
-
-                program_array[lfo_index_row][col] = val1;
-                program_array[row][lfo_index_col] = val2;
-                program_array[lfo_index_row][lfo_index_col] = 0; // diag
-            } else {
-                program_array[row][col] = hex_mapping(weights[i][j]);
-            }
+            program_array[row][col] = hex_mapping(weights[i][j]);
         }
     }
 }
@@ -558,7 +479,10 @@ int cobi_read(int cobi_fd, CobiOutput *result, bool wait_for_result)
 
     if (!result_ready && wait_for_result) {
         cobi_wait_for_read(cobi_fd);
-    } else if (result_ready) {
+        result_ready = true;
+    }
+
+    if (result_ready) {
         uint8_t bits[COBI_CHIP_OUTPUT_LEN] = {0};
         int num_read_bits = 32;
 
@@ -625,6 +549,16 @@ int cobi_read(int cobi_fd, CobiOutput *result, bool wait_for_result)
     return result_count;
 }
 
+void cobi_flush_results(int cobi_fd)
+{
+    CobiOutput result;
+
+    // Read out all results
+    while(cobi_has_result(cobi_fd)) {
+        cobi_read(cobi_fd, &result, true);
+    }
+}
+
 void cobi_reset(int cobi_fd)
 {
     pci_write_data write_data;
@@ -636,6 +570,8 @@ void cobi_reset(int cobi_fd)
         close(cobi_fd);
         exit(2);
     }
+
+    cobi_flush_results(cobi_fd);
 }
 
 
@@ -786,51 +722,4 @@ void solveQ(int device, CobiInput* obj, CobiOutput *result)
     // Clean up
 
     close(cobi_fd);
-}
-
-int main()
-{
-    srand(time(NULL));
-
-    CobiInput obj;
-    obj.debug = 1;
-
-    int w = 46;
-    int h = 46;
-
-    // generate random problem
-    int density_percentile = 25;
-    for (int i = 0; i < h; i++) {
-        for (int j = 0; j < w; j++) {
-             if (i == j) {
-                obj.Q[i][j] = _rand_int_normalized();
-            } else if (rand() % 100 < density_percentile) {
-                obj.Q[i][j] = _rand_int_normalized();
-            } else {
-                obj.Q[i][j] = 0;
-            }
-        }
-    }
-
-    printf("input:\n");
-    for(int i = 0; i < h; i++) {
-        for(int j = 0; j < w; j++) {
-                printf("%2d ", obj.Q[i][j]);
-        }
-        printf("\n");
-    }
-    printf("--\n");
-
-    int dev_num = 1;
-
-    CobiOutput output;
-    solveQ(dev_num, &obj, &output);
-
-    printf("\noutput:\n");
-    printf("energy: %d\n", output.energy);
-    printf("Problem id: %d\n", output.problem_id);
-    printf("Core id: %d\n", output.core_id);
-    print_spins(output.spins);
-    printf("--\n");
-    return 0;
 }

@@ -55,11 +55,11 @@ def cobi_sample(Q_orig, vars_init=[], HWDEBUG=False, DEVICE=0):
     ising = {'Q': [[int(0)] * 46] * 46, 'debug': HWDEBUG}
     ising['Q'] = mtx.tolist()
 
-    # result = {'problem_id': 0, 'energy': 0, 'spins': [0] * 46, 'core_id':0}
-    # result = w_solveQ(ising,result,DEVICE)
+    result = {'problem_id': 0, 'energy': 0, 'spins': [0] * 46, 'core_id':0}
 
     w_submit_problem(DEVICE, ising)
     result = w_read_result_blocking(DEVICE)
+    # result = w_solveQ(ising,result,DEVICE)
 
     # print(result)
 
