@@ -25,6 +25,7 @@ extern "C" {
 #define COBI_DEVICE_NAME_TEMPLATE "/dev/cobi_pcie_card%hhu"
 
 #define COBI_WEIGHT_MATRIX_DIM 45
+#define COBI_NUM_SPINS 46             // size of weight matrix including the local field
 #define COBI_PROGRAM_MATRIX_HEIGHT 51
 #define COBI_PROGRAM_MATRIX_WIDTH 52
 #define COBI_SHIL_VAL 0

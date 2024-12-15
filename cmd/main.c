@@ -391,7 +391,7 @@ int main(int argc, char *argv[]) {
         }
 
         param.use_cobi = true;
-        param.sub_size = 45;
+        param.sub_size = COBI_NUM_SPINS;
         param.sub_sampler = &cobi_sub_sample;
         param.sub_sampler_data = &param;
     } else {

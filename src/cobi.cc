@@ -36,6 +36,11 @@
 extern "C" {
 #endif
 
+// Local declarations
+int cobi_read(int cobi_id, CobiOutput *output, bool wait_for_result);
+
+
+
 // TESTING: To be removed
 
 static double write_cum_time = 0;
@@ -282,23 +287,7 @@ void _free_array2d(void **a, int h) {
     free(a);
 }
 
-// FPGA Control interface
-void cobi_reset(int cobi_id)
-{
-    pci_write_data write_data;
-
-    // initialize axi interface control
-    write_data.offset = COBI_FPGA_ADDR_CONTROL * sizeof(uint32_t);
-    write_data.value = 0;
-    if (Verbose_ > 2) {
-        printf("Initialize cobi chips interface controller\n");
-    }
-
-    if (write(cobi_fds[cobi_id], &write_data, sizeof(write_data)) != sizeof(write_data)) {
-        perror("Failed to write to device");
-        exit(3);
-    }
-}
+// Cobi data structure functions
 
 void cobi_output_clear(CobiOutput *o, size_t num_spins)
 {
@@ -396,14 +385,80 @@ uint8_t hex_mapping(int val)
     }
 }
 
+// FPGA interface functions
+uint32_t cobi_read_status(int cobi_id)
+{
+    uint32_t read_data;
+    off_t read_offset;
+    read_offset = COBI_FPGA_ADDR_STATUS * sizeof(uint32_t); // read fifo empty status
+
+    // Write read offset to device
+    if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+        perror("Failed to set read offset in device");
+        close(cobi_fds[cobi_id]);
+        exit(1);
+    }
+
+    // Read data from device
+    if (read(cobi_fds[cobi_id], &read_data, sizeof(read_data)) != sizeof(read_data)) {
+        perror("Failed to read from device");
+        close(cobi_fds[cobi_id]);
+        exit(1);
+    }
+
+    /* printf("COBIFIVE status succeeding read: 0x%x\n", read_data); */
+    return read_data;
+}
+
+bool cobi_has_result(int cobi_id)
+{
+    uint32_t read_data = cobi_read_status(cobi_id);
+
+    // Check there is at least one result to be read
+    bool has_result =
+        (read_data & COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY) != COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY;
+    return has_result;
+}
+
+void cobi_flush_results(int cobi_id)
+{
+    CobiOutput *result = cobi_output_mk_default(COBI_NUM_SPINS);
+
+    // Read out all results
+    while(cobi_has_result(cobi_id)) {
+        cobi_read(cobi_id, result, true);
+    }
+
+    free_cobi_output(result);
+}
+
+void cobi_reset(int cobi_id)
+{
+    pci_write_data write_data;
+
+    // initialize axi interface control
+    write_data.offset = COBI_FPGA_ADDR_CONTROL * sizeof(uint32_t);
+    write_data.value = 0;
+    if (Verbose_ > 2) {
+        printf("Initialize cobi chips interface controller\n");
+    }
+
+    if (write(cobi_fds[cobi_id], &write_data, sizeof(write_data)) != sizeof(write_data)) {
+        perror("Failed to write to device");
+        exit(3);
+    }
+
+    cobi_flush_results(cobi_id);
+}
+
+
 // Serialize the matrix to be programmed to the cobi chip
 //
 // @param prog_nibs The matrix to be programmed, assumed to be a 2d array of nibbles
-// returns data in serialized array of 64 bit chunks
-uint64_t *cobi_serialize_programming_bits(uint8_t **prog_nibs)
-{
-    uint64_t *serialized = (uint64_t*)malloc(PCI_PROGRAM_LEN * sizeof(uint64_t));
-
+// @param serialized output is stored as serialized array of 64 bit chunks
+void cobi_serialize_programming_bits(
+    uint8_t **prog_nibs, uint64_t serialized[PCI_PROGRAM_LEN]
+) {
     int serial_index = 0;
 
     int cur_nib_count = 0;
@@ -427,12 +482,12 @@ uint64_t *cobi_serialize_programming_bits(uint8_t **prog_nibs)
             }
         }
     }
-
-    return serialized;
 }
 
-// @param weights 2d array of ints, values must be in range -7 to 7
-// Assume program_array was already initialized to 0
+// @param weights input 2d array of ints, values must be in range -7 to 7.
+// Main diagonal encodes local field values and can be in range -14 to 14.
+// @param program_array output array. Assumed to be initialized to 0.
+//
 void cobi_prepare_weights(
     int **weights, uint8_t shil_val, uint8_t *control_bits, uint8_t **program_array
 ) {
@@ -477,25 +532,22 @@ void cobi_prepare_weights(
     // populate weights
     int row;
     int col;
-    const int lfo_index_col = 3;
-    const int lfo_index_row = COBI_PROGRAM_MATRIX_HEIGHT - 3;
-    for (int i = 0; i < COBI_WEIGHT_MATRIX_DIM; i++) {
-        // the program matrix is flipped vertically relative to the weight matrix
-        if (i < COBI_SHIL_INDEX) {
-            row = COBI_PROGRAM_MATRIX_HEIGHT - 3 - i; // skip the control and calibration rows
+    const int lfo_index_row = 1;
+    const int lfo_index_col = COBI_PROGRAM_MATRIX_WIDTH - 2;
+    for (int i = 0; i < COBI_NUM_SPINS; i++) {
+        // NOTE: the program matrix is reflected horizontally relative to the weight matrix
+
+        if (i < COBI_SHIL_INDEX + 2) {
+            row = i + 1; // skip the calibration row
         } else {
-            row = COBI_PROGRAM_MATRIX_HEIGHT - 5 - i; // also skip the 2 shil rows
+            row = i + 3; // also skip the 2 shil rows
         }
 
-        for (int j = 0; j < COBI_WEIGHT_MATRIX_DIM; j++) {
-            if (j < COBI_SHIL_INDEX) {
-                col = j + 3; // skip the 2 zero cols and calibration cols
+        for (int j = 0; j < COBI_NUM_SPINS; j++) {
+            if (j < COBI_SHIL_INDEX + 2) {
+                col = COBI_PROGRAM_MATRIX_WIDTH - 2 - j; // skip the calibration col
             } else {
-                col = j + 5; // also skip the 2 shil cols
-            }
-
-            if (Verbose_ > 4) {
-                printf("--i,j: %d, %d --> row,col: %d, %d\n",i,j,row,col);
+                col = COBI_PROGRAM_MATRIX_WIDTH - 4 - j; // also skip the 2 shil cols
             }
 
             if (i == j) {
@@ -503,21 +555,10 @@ void cobi_prepare_weights(
                 int val1 = hex_mapping(split);
                 int val2 = hex_mapping(split + (weights[i][i] % 2));
 
-                if (Verbose_ > 4) {
-                    printf(
-                        "diag input: %d,%d; output %d,%d,,%d,%d\n",
-                        i,j, lfo_index_row, col, lfo_index_col, row
-                    );
-                }
                 program_array[lfo_index_row][col] = val1;
                 program_array[row][lfo_index_col] = val2;
-                program_array[lfo_index_row][lfo_index_col] = 0; // diag
+                program_array[row][col] = 0; // zero diagonal
             } else {
-                if (program_array[row][col] != 0) {
-                    if (Verbose_ > 4) {
-                        printf("overwriting (%d,%d): %d\n", row, col, program_array[row][col]);
-                    }
-                }
                 program_array[row][col] = hex_mapping(weights[i][j]);
             }
         }
@@ -528,8 +569,6 @@ void cobi_wait_for_write(int cobi_id)
 {
     uint32_t read_data;
     off_t read_offset;
-
-    int s_ready_low_count = 0;
 
     // Poll status bit
 
@@ -550,18 +589,7 @@ void cobi_wait_for_write(int cobi_id)
 
         if((read_data & COBI_FPGA_STATUS_MASK_S_READY) == COBI_FPGA_STATUS_VALUE_S_READY) {
             break;
-        } else {
-            // if (s_ready_low_count > 50) {
-            //     printf("ERROR S_READY stuck low: status %x\n", read_data);
-            //     exit(3);
-            // }
-            s_ready_low_count++;
-            // printf("S_READY LOW; status %x\n", read_data);
         }
-    }
-
-    if( Verbose_ > 2 ) {
-        printf("Done waiting for write: number of polls %d\n", s_ready_low_count);
     }
 }
 
@@ -655,90 +683,98 @@ int bits_to_signed_int(uint8_t *bits, unsigned int num_bits)
     /* return (n & s - 1) - (n & s) */
 }
 
-void cobi_read(int cobi_id, CobiOutput *output)
+// Read a single result from the given COBI device.
+// If wait_for_result is set, block until a result becomes availble
+int cobi_read(int cobi_id, CobiOutput *output, bool wait_for_result)
 {
     uint32_t read_data;
     off_t read_offset;
-    int num_read_bits = 32;
+    int result_count = 0;
 
-    cobi_wait_for_read(cobi_id);
+    bool result_ready = cobi_has_result(cobi_id);
 
-    uint8_t bits[COBI_CHIP_OUTPUT_LEN] = {0};
-
-    // Read one result from chip
-    for (int i = 0; i < COBI_CHIP_OUTPUT_READ_COUNT; ++i) {
-        read_offset = 4 * sizeof(uint32_t);
-
-        // Write read offset to device
-        if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
-            perror("Failed to set read offset in device");
-            exit(-3);
-        }
-
-        // Read data from device
-        if (read(cobi_fds[cobi_id], &read_data, sizeof(read_data)) != sizeof(read_data)) {
-            perror("Failed to read from device");
-            exit(-4);
-        }
-
-        if (i == COBI_CHIP_OUTPUT_READ_COUNT - 1) {
-            // Final read should have only 5 bits
-            num_read_bits = 5;
-        } else {
-            num_read_bits = 32;
-        }
-
-        for (int j = 0; j < num_read_bits; j++) {
-            uint32_t mask = 1 << j;
-
-            // combine data into bit array while reversing order of bits
-            bits[32 * i + j] = ((read_data & mask) >> j);
-        }
-
-        if (Verbose_ > 2) {
-            printf("Read data from cobi chip A at offset %ld: 0x%x\n", read_offset, read_data);
-        }
+    if (!result_ready && wait_for_result) {
+        cobi_wait_for_read(cobi_id);
+        result_ready = true;
     }
 
-    // Parse bits into CobiOutput
+    if (result_ready) {
+        uint8_t bits[COBI_CHIP_OUTPUT_LEN] = {0};
+        int num_read_bits = 32;
 
-    int bit_index = 0;
+        // Read one result from chip
+        for (int i = 0; i < COBI_CHIP_OUTPUT_READ_COUNT; ++i) {
+            read_offset = 4 * sizeof(uint32_t);
 
-    // Parse program id
-    output->problem_id = 0;
-    for (int i = 3; i >= 0; i--) {
-        output->problem_id |= bits[bit_index++] << i;
-    }
+            // Write read offset to device
+            if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+                perror("Failed to set read offset in device");
+                exit(-3);
+            }
 
-    // Parse core id
-    output->core_id = 0;
-    for (int i = 3; i >= 0; i--) {
-        output->core_id |= bits[bit_index++] << i;
-    }
+            // Read data from device
+            if (read(cobi_fds[cobi_id], &read_data, sizeof(read_data)) != sizeof(read_data)) {
+                perror("Failed to read from device");
+                exit(-4);
+            }
 
-    // Parse spins, from bit 8 to bit 53
-    for (int i = 0; i < 46; i++) {
-        output->spins[i] = bits[bit_index++];
-    }
+            if (i == COBI_CHIP_OUTPUT_READ_COUNT - 1) {
+                // Final read should have only 5 bits
+                num_read_bits = 5;
+            } else {
+                num_read_bits = 32;
+            }
 
-    // if (Verbose_ > 1) {
-    //     // bit_index == 4+4+46 == 54;
-    //     printf("cobi_read::energy index 54 =? %d\n", bit_index);
-    // }
+            for (int j = 0; j < num_read_bits; j++) {
+                uint32_t mask = 1 << j;
 
-    // Parse energy from last 15 bits
-    output->energy = bits_to_signed_int(&bits[bit_index], 15);
+                // combine data into bit array while reversing order of bits
+                bits[32 * i + j] = ((read_data & mask) >> j);
+            }
 
-    if (Verbose_ > 1) {
-        // bit_index == 4+4+46 == 54;
-        printf("cobi output: problem_id %d, core_id %d, energy %d, spins: [ ",
-               output->problem_id, output->core_id, output->energy);
+            if (Verbose_ > 2) {
+                printf("Read data from cobi chip A at offset %ld: 0x%x\n", read_offset, read_data);
+            }
+        }
+
+        // Parse bits into CobiOutput
+
+        int bit_index = 0;
+
+        // Parse program id
+        output->problem_id = 0;
+        for (int i = 3; i >= 0; i--) {
+            output->problem_id |= bits[bit_index++] << i;
+        }
+
+        // Parse core id
+        output->core_id = 0;
+        for (int i = 3; i >= 0; i--) {
+            output->core_id |= bits[bit_index++] << i;
+        }
+
+        // Parse spins, from bit 8 to bit 53
         for (int i = 0; i < 46; i++) {
-            printf("%d", output->spins[i]);
+            // reverse order of spins
+            output->spins[COBI_NUM_SPINS - 1 - i] = bits[bit_index++] == 0 ? 1 : -1;
+            // output->spins[i] = bits[bit_index++] == 0 ? 1 : -1;
         }
-        printf(" ]\n");
+
+        // Parse energy from last 15 bits
+        output->energy = bits_to_signed_int(&bits[bit_index], 15);
+
+        if (Verbose_ > 1) {
+            // bit_index == 4+4+46 == 54;
+            printf("cobi output: problem_id %d, core_id %d, energy %d, spins: [ ",
+                   output->problem_id, output->core_id, output->energy);
+            for (int i = 0; i < 46; i++) {
+                printf("%d", output->spins[i]);
+            }
+            printf(" ]\n");
+        }
     }
-    // }
+
+    return result_count;
 }
 
 int *cobi_test_multi_times(
@@ -763,7 +799,7 @@ int *cobi_test_multi_times(
 
     reftime = omp_get_wtime();
     for(int i = 0; i < sample_times; i++) {
-        cobi_read(cobi_id, cobi_data->chip_output[i]);
+        cobi_read(cobi_id, cobi_data->chip_output[i], true);
     }
     read_cum_time += omp_get_wtime() - reftime;
 
@@ -1178,10 +1214,10 @@ int cobi_init(int *req_num_devices, int specific_card)
 void cobi_solver(
     CobiSubSamplerParams *params, double **qubo, int num_spins, int8_t *qubo_solution
 ) {
-    if (num_spins != COBI_WEIGHT_MATRIX_DIM) {
+    if (num_spins != COBI_NUM_SPINS) {
         printf(
             "Quitting.. cobi_solver called with size %d. Cannot be greater than %d.\n",
-            num_spins, COBI_WEIGHT_MATRIX_DIM
+            num_spins, COBI_NUM_SPINS
         );
         exit(2);
     }
@@ -1189,9 +1225,6 @@ void cobi_solver(
     double reftime = 0;
     int best_energy = 0;
     int best_output = 0;
-
-    // TODO move away from using CobiData. Doesn't make much sense any more.
-    CobiData *cobi_data = cobi_data_mk(num_spins, params->num_samples);
 
     // TODO locally allocate/manage arrays for improved performance
 
@@ -1207,6 +1240,9 @@ void cobi_solver(
         num_probs = 4;
     }
 
+    // TODO move away from using CobiData. Doesn't make much sense any more.
+    CobiData *cobi_data = cobi_data_mk(num_spins, num_probs);
+
     // Convert problem from QUBO to Ising
     ising_from_qubo(ising, qubo, num_spins);
 
@@ -1217,7 +1253,10 @@ void cobi_solver(
 
         // TODO shouldn't need to zero matrix every time. Being safe for now.
         zero_array2d(norm_ising, num_spins, num_spins);
-        zero_array2d_uint8(cobi_data->programming_bits, num_spins, num_spins);
+        zero_array2d_uint8(
+            cobi_data->programming_bits, COBI_PROGRAM_MATRIX_WIDTH, COBI_PROGRAM_MATRIX_HEIGHT
+        );
+        uint64_t serialized_program[PCI_PROGRAM_LEN] = {0};
 
         cobi_norm_val(norm_ising, ising, num_spins, params->eval_strat, prob_num);
 
@@ -1237,7 +1276,7 @@ void cobi_solver(
             _print_array1d_uint8(cntrl_nibbles, COBI_CONTROL_NIBBLES_LEN);
 
             printf("Normalized ising:\n");
-            _print_array2d_int(norm_ising, COBI_WEIGHT_MATRIX_DIM, COBI_WEIGHT_MATRIX_DIM);
+            _print_array2d_int(norm_ising, COBI_NUM_SPINS, COBI_NUM_SPINS);
             printf("--\n");
         }
 
@@ -1254,8 +1293,8 @@ void cobi_solver(
             printf("--\n");
         }
 
-        uint64_t *serialized_program = cobi_serialize_programming_bits(
-            cobi_data->programming_bits
+        cobi_serialize_programming_bits(
+            cobi_data->programming_bits, serialized_program
         );
 
         if (Verbose_ > 3) {
@@ -1269,7 +1308,6 @@ void cobi_solver(
         //     params->device_id, cobi_data, params->num_samples, ising_solution
         // );
 
-        free(serialized_program);
         free(cntrl_nibbles);
     }
 
@@ -1277,7 +1315,7 @@ void cobi_solver(
     // Read out results
     reftime = omp_get_wtime();
     for (int i = 0; i < num_probs; i++) {
-        cobi_read(params->device_id, cobi_data->chip_output[i]);
+        cobi_read(params->device_id, cobi_data->chip_output[i], true);
         if (cobi_data->chip_output[i]->energy < best_energy) {
             best_energy = cobi_data->chip_output[i]->energy;
             best_output = i;

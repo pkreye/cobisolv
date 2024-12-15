@@ -282,8 +282,9 @@ void free_cobi_data(CobiData *d)
     free(d);
 }
 
-// @param weights 2d array of ints values must be in range -7 to 7
-// Assume program_array was already initialized to 0
+// @param weights input 2d array of ints values must be in range -7 to 7.
+// Assumed not to use main diagonal. Local field values should be encoded in first row/col.
+// @param program_array output matrix. Assumes program_array was initialized to 0 to start.
 void cobi_prepare_weights(
     int weights[46][46], uint8_t shil_val, uint8_t *control_bits, uint8_t program_array[][COBI_PROGRAM_MATRIX_WIDTH]
 ) {
@@ -307,11 +308,6 @@ void cobi_prepare_weights(
         program_array[COBI_PROGRAM_MATRIX_HEIGHT - COBI_SHIL_INDEX - 4][k] = mapped_shil_val;
     }
 
-    // zero main diagonal
-    for (int i = 0; i < COBI_PROGRAM_MATRIX_HEIGHT - 2; i++) {
-        program_array[i][COBI_PROGRAM_MATRIX_WIDTH - 1 - i] = 0;
-    }
-
     // populate weights
     int row;
     int col;
@@ -330,7 +326,11 @@ void cobi_prepare_weights(
                 col = COBI_PROGRAM_MATRIX_WIDTH - 4 - j; // also skip the 2 shil cols
             }
 
-            program_array[row][col] = hex_mapping(weights[i][j]);
+            if (i == j)  {
+                program_array[row][col] = 0;
+            } else {
+                program_array[row][col] = hex_mapping(weights[i][j]);
+            }
         }
     }
 }
