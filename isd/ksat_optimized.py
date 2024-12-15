@@ -64,7 +64,6 @@ def cobi_sample(Q_orig, vars_init=[], HWDEBUG=False, DEVICE=0):
     # print(result)
 
     best_sample = result["spins"]
-    best_sample.reverse()
     state_sample = {k_i:best_sample[k_i] for k_i in range(len(variables)+1)}
 
     state_sample_int = {}
