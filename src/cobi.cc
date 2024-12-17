@@ -493,15 +493,6 @@ void cobi_prepare_weights(
 ) {
     int mapped_shil_val = hex_mapping(shil_val);
 
-    if (Verbose_ > 3) {
-        printf("==\n");
-        printf("Preparing Program:\n");
-        _print_array2d_uint8(
-            program_array, COBI_PROGRAM_MATRIX_WIDTH, COBI_PROGRAM_MATRIX_HEIGHT
-        );
-        printf("==\n");
-    }
-
     // initialize outer rows
     for(int k = 0; k < COBI_PROGRAM_MATRIX_WIDTH; k++) {
         // add control bits in last row
@@ -520,14 +511,14 @@ void cobi_prepare_weights(
         program_array[COBI_PROGRAM_MATRIX_HEIGHT - COBI_SHIL_INDEX - 4][k] = mapped_shil_val;
     }
 
-    if (Verbose_ > 3) {
-        printf("==\n");
-        printf("Preparing Program: pre weights\n");
-        _print_array2d_uint8(
-            program_array, COBI_PROGRAM_MATRIX_WIDTH, COBI_PROGRAM_MATRIX_HEIGHT
-        );
-        printf("==\n");
-    }
+    // if (Verbose_ > 3) {
+    //     printf("==\n");
+    //     printf("Preparing Program: pre weights\n");
+    //     _print_array2d_uint8(
+    //         program_array, COBI_PROGRAM_MATRIX_WIDTH, COBI_PROGRAM_MATRIX_HEIGHT
+    //     );
+    //     printf("==\n");
+    // }
 
     // populate weights
     int row;
@@ -846,8 +837,7 @@ int *cobi_test_multi_times(
 
     // Copy best result into solution
     for (size_t i = 0; i < cobi_data->probSize; i++) {
-        // map binary spins to {-1,1} values
-        solution[i] = cobi_data->chip_output[best_index]->spins[i] == 0 ? 1 : -1;
+        solution[i] = cobi_data->chip_output[best_index]->spins[i];
     }
 
     if (Verbose_ > 2) {
@@ -1131,7 +1121,7 @@ int cobi_init(int *req_num_devices, int specific_card)
 
     if (specific_card >= 0) {
         if (Verbose_ > 0) {
-            printf("Using COBI card %d", specific_card);
+            printf("Using COBI card %d\n", specific_card);
         }
         *req_num_devices = 1;
         snprintf(glob_pattern, sizeof(glob_pattern), COBI_DEVICE_NAME_TEMPLATE, specific_card);
@@ -1332,8 +1322,7 @@ void cobi_solver(
 
     // Copy best result into solution
     for (size_t i = 0; i < cobi_data->probSize; i++) {
-        // map binary spins to {-1,1} values
-        ising_solution[i] = cobi_data->chip_output[best_output]->spins[i] == 0 ? 1 : -1;
+        ising_solution[i] = cobi_data->chip_output[best_output]->spins[i];
     }
 
     // Convert ising solution back to QUBO form

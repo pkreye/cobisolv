@@ -656,7 +656,7 @@ parameters_t default_parameters() {
     param.cobi_card_num = -1; // don't use specific card
 
     param.pid = 0xFF;
-    param.dco = 0;
+    param.dco = 5;
     param.sample_delay = 0xFF;
     param.max_fails = 0x1F;
     param.rosc_time = 0x3;
