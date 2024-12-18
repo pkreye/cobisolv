@@ -934,11 +934,12 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
 
                         if (param->use_cobi) {
                             CobiSubSamplerParams cobi_sampler_params;
-                            if (param->cobi_card_num >= 0) {
-                                cobi_sampler_params.device_id = param->cobi_card_num; // device_num;
-                            } else {
-                                cobi_sampler_params.device_id = 0;
-                            }
+                            // TODO multiboard parallelism
+                            // if (param->cobi_card_num >= 0) {
+                                // cobi_sampler_params.device_id = param->cobi_card_num; // device_num;
+                            // } else {
+                            cobi_sampler_params.device_id = 0;
+                            // }
 
                             cobi_sampler_params.eval_strat = param->cobi_eval_strat;
                             cobi_sampler_params.num_samples = param->cobi_num_samples;
