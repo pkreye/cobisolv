@@ -437,7 +437,7 @@ void cobi_reset(int cobi_id)
     pci_write_data write_data;
 
     // initialize axi interface control
-    write_data.offset = COBI_FPGA_ADDR_CONTROL * sizeof(uint32_t);
+    write_data.offset = COBI_FPGA_ADDR_CONTROL * sizeof(uint64_t);
     write_data.value = 0;
     if (Verbose_ > 2) {
         printf("Initialize cobi chips interface controller\n");
@@ -704,7 +704,7 @@ int cobi_read(int cobi_id, CobiOutput *output, bool wait_for_result)
 
         // Read one result from chip
         for (int i = 0; i < COBI_CHIP_OUTPUT_READ_COUNT; ++i) {
-            read_offset = 4 * sizeof(uint32_t);
+            read_offset = COBI_FPGA_ADDR_READ * sizeof(uint32_t);
 
             // Write read offset to device
             if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
