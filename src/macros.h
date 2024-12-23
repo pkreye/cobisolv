@@ -26,6 +26,8 @@
 
 #define VERSION "cobisolv 0.1.4-cobifive"
 
+#define BITMASK_IS_SET(read_data, bitmask) ((read_data & bitmask) == bitmask)
+#define BITMASK_IS_ZERO(read_data, bitmask) ((read_data & bitmask) == 0)
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 #define EPSILON 1.0e-7

@@ -386,6 +386,50 @@ uint8_t hex_mapping(int val)
 }
 
 // FPGA interface functions
+uint32_t cobi_get_fw_id(int cobi_id)
+{
+    uint32_t read_data;
+    off_t read_offset;
+    read_offset = COBI_FPGA_ADDR_STATUS * sizeof(uint32_t); // read fifo empty status
+
+    // Write read offset to device
+    if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+        perror("Failed to set read offset in device");
+        close(cobi_fds[cobi_id]);
+        exit(1);
+    }
+
+    // Read data from device
+    if (read(cobi_fds[cobi_id], &read_data, sizeof(read_data)) != sizeof(read_data)) {
+        perror("Failed to read from device");
+        close(cobi_fds[cobi_id]);
+        exit(1);
+    }
+
+    /* printf("COBIFIVE status succeeding read: 0x%x\n", read_data); */
+    return read_data;
+}
+int fwid_read(int fd,uint32_t* fwid_val) {
+    off_t read_offset = 1 * sizeof(uint32_t); // Read FIFO empty status
+
+    // Write read offset to device
+    if (write(fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+        perror("Failed to set read offset in device");
+        return -1;
+    }
+
+    // Read data from device
+    uint32_t read_data;
+    if (read(fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
+        perror("Failed to read from device");
+        return -1;
+    }
+    *fwid_val = read_data;
+    return 0;
+
+}
+
+
 uint32_t cobi_read_status(int cobi_id)
 {
     uint32_t read_data;
@@ -415,8 +459,7 @@ bool cobi_has_result(int cobi_id)
     uint32_t read_data = cobi_read_status(cobi_id);
 
     // Check there is at least one result to be read
-    bool has_result =
-        (read_data & COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY) != COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY;
+    bool has_result = BITMASK_IS_ZERO(read_data, COBI_FPGA_STATUS_READ_ALL_EMPTY);
     return has_result;
 }
 
@@ -587,7 +630,7 @@ void cobi_wait_for_write(int cobi_id)
             exit(2);
         }
 
-        if((read_data & COBI_FPGA_STATUS_MASK_S_READY) == COBI_FPGA_STATUS_VALUE_S_READY) {
+        if(BITMASK_IS_SET(read_data, COBI_FPGA_STATUS_S_READY_ALL)) {
             break;
         }
     }
@@ -616,9 +659,7 @@ void cobi_wait_for_read(int cobi_id)
         }
 
         // Check there is at least one result to be read
-        if((read_data & COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY) !=
-           COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY
-          ) {
+        if(BITMASK_IS_ZERO(read_data, COBI_FPGA_STATUS_READ_ALL_EMPTY)) {
             break;
         }
     }
@@ -683,6 +724,84 @@ int bits_to_signed_int(uint8_t *bits, unsigned int num_bits)
     /* return (n & s - 1) - (n & s) */
 }
 
+int cobi_read_result(int chip_to_read, CobiOutput *output)
+{
+    uint8_t bits[COBI_CHIP_OUTPUT_LEN] = {0};
+    int num_read_bits = 32;
+
+    // Read one result from chip
+    for (int i = 0; i < COBI_CHIP_OUTPUT_READ_COUNT; ++i) {
+        read_offset = COBI_FPGA_ADDR_READ * sizeof(uint32_t);
+
+        // Write read offset to device
+        if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+            perror("Failed to set read offset in device");
+            exit(-3);
+        }
+
+        // Read data from device
+        if (read(cobi_fds[cobi_id], &read_data, sizeof(read_data)) != sizeof(read_data)) {
+            perror("Failed to read from device");
+            exit(-4);
+        }
+
+        if (i == COBI_CHIP_OUTPUT_READ_COUNT - 1) {
+            // Final read should have only 5 bits
+            num_read_bits = 5;
+        } else {
+            num_read_bits = 32;
+        }
+
+        for (int j = 0; j < num_read_bits; j++) {
+            uint32_t mask = 1 << j;
+
+            // combine data into bit array while reversing order of bits
+            bits[32 * i + j] = ((read_data & mask) >> j);
+        }
+
+        if (Verbose_ > 2) {
+            printf("Read data from cobi chip A at offset %ld: 0x%x\n", read_offset, read_data);
+        }
+    }
+
+    // Parse bits into CobiOutput
+
+    int bit_index = 0;
+
+    // Parse program id
+    output->problem_id = 0;
+    for (int i = 3; i >= 0; i--) {
+        output->problem_id |= bits[bit_index++] << i;
+    }
+
+    // Parse core id
+    output->core_id = 0;
+    for (int i = 3; i >= 0; i--) {
+        output->core_id |= bits[bit_index++] << i;
+    }
+
+    // Parse spins, from bit 8 to bit 53
+    for (int i = 0; i < 46; i++) {
+        // reverse order of spins
+        output->spins[COBI_NUM_SPINS - 1 - i] = bits[bit_index++] == 0 ? 1 : -1;
+        // output->spins[i] = bits[bit_index++] == 0 ? 1 : -1;
+    }
+
+    // Parse energy from last 15 bits
+    output->energy = bits_to_signed_int(&bits[bit_index], 15);
+
+    if (Verbose_ > 1) {
+        // bit_index == 4+4+46 == 54;
+        printf("cobi output: problem_id %d, core_id %d, energy %d, spins: [ ",
+               output->problem_id, output->core_id, output->energy);
+        for (int i = 0; i < 46; i++) {
+            printf("%d", output->spins[i]);
+        }
+        printf(" ]\n");
+    }
+
+}
+
 // Read a single result from the given COBI device.
 // If wait_for_result is set, block until a result becomes availble
 int cobi_read(int cobi_id, CobiOutput *output, bool wait_for_result)
@@ -691,7 +810,9 @@ int cobi_read(int cobi_id, CobiOutput *output, bool wait_for_result)
     off_t read_offset;
     int result_count = 0;
 
-    bool result_ready = cobi_has_result(cobi_id);
+    // bool result_ready = cobi_has_result(cobi_id);
+    uint32_t cobi_status = cobi_read_status(cobi_id);
+    bool result_ready = BITMASK_IS_ZERO(cobi_status, COBI_FPGA_STATUS_READ_ALL_EMPTY);
 
     if (!result_ready && wait_for_result) {
         cobi_wait_for_read(cobi_id);
@@ -699,78 +820,11 @@ int cobi_read(int cobi_id, CobiOutput *output, bool wait_for_result)
     }
 
     if (result_ready) {
-        uint8_t bits[COBI_CHIP_OUTPUT_LEN] = {0};
-        int num_read_bits = 32;
-
-        // Read one result from chip
-        for (int i = 0; i < COBI_CHIP_OUTPUT_READ_COUNT; ++i) {
-            read_offset = COBI_FPGA_ADDR_READ * sizeof(uint32_t);
-
-            // Write read offset to device
-            if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
-                perror("Failed to set read offset in device");
-                exit(-3);
-            }
-
-            // Read data from device
-            if (read(cobi_fds[cobi_id], &read_data, sizeof(read_data)) != sizeof(read_data)) {
-                perror("Failed to read from device");
-                exit(-4);
-            }
-
-            if (i == COBI_CHIP_OUTPUT_READ_COUNT - 1) {
-                // Final read should have only 5 bits
-                num_read_bits = 5;
-            } else {
-                num_read_bits = 32;
-            }
-
-            for (int j = 0; j < num_read_bits; j++) {
-                uint32_t mask = 1 << j;
-
-                // combine data into bit array while reversing order of bits
-                bits[32 * i + j] = ((read_data & mask) >> j);
-            }
-
-            if (Verbose_ > 2) {
-                printf("Read data from cobi chip A at offset %ld: 0x%x\n", read_offset, read_data);
-            }
-        }
-
-        // Parse bits into CobiOutput
-
-        int bit_index = 0;
-
-        // Parse program id
-        output->problem_id = 0;
-        for (int i = 3; i >= 0; i--) {
-            output->problem_id |= bits[bit_index++] << i;
-        }
-
-        // Parse core id
-        output->core_id = 0;
-        for (int i = 3; i >= 0; i--) {
-            output->core_id |= bits[bit_index++] << i;
-        }
-
-        // Parse spins, from bit 8 to bit 53
-        for (int i = 0; i < 46; i++) {
-            // reverse order of spins
-            output->spins[COBI_NUM_SPINS - 1 - i] = bits[bit_index++] == 0 ? 1 : -1;
-            // output->spins[i] = bits[bit_index++] == 0 ? 1 : -1;
-        }
-
-        // Parse energy from last 15 bits
-        output->energy = bits_to_signed_int(&bits[bit_index], 15);
-
-        if (Verbose_ > 1) {
-            // bit_index == 4+4+46 == 54;
-            printf("cobi output: problem_id %d, core_id %d, energy %d, spins: [ ",
-                   output->problem_id, output->core_id, output->energy);
-            for (int i = 0; i < 46; i++) {
-                printf("%d", output->spins[i]);
-            }
-            printf(" ]\n");
+        for (int i = 0; i < COBI_NUM_CHIPS; i++) {
+        if (BITMASK_IS_ZERO(cobi_status, COBI_FPGA_STATUS_EMPTY_CHIP1)) {
+            // Chip i has a result
+            int read_addr = COBI_FPGA_ADDR_READ[i];
+            cobi_read_result(read_addr, output[result_count]);
         }
     }
 

@@ -37,16 +37,42 @@ extern "C" {
 #define COBI_CONTROL_NIBBLES_LEN 52
 
 // FPGA
-#define COBI_FPGA_ADDR_READ 4
+#define COBI_FPGA_ADDR_FW_ID  1
+#define COBI_FPGA_ADDR_FW_REV 2
+#define COBI_FPGA_ADDR_READ_CHIP1 4
+#define COBI_FPGA_ADDR_READ_CHIP2 5
+#define COBI_FPGA_ADDR_READ_CHIP3 6
+#define COBI_FPGA_ADDR_READ_CHIP4 7
 #define COBI_FPGA_ADDR_CONTROL 8
-#define COBI_FPGA_ADDR_WRITE 9
+#define COBI_FPGA_ADDR_WRITE   9
 #define COBI_FPGA_ADDR_STATUS 10
 
-#define COBI_FPGA_STATUS_MASK_STATUS 1          // 1 == Controller is busy
-#define COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY 2 // 1 == Read FIFO Empty
-#define COBI_FPGA_STATUS_MASK_READ_FIFO_FULL  4 // 1 == Read FIFO Full
-#define COBI_FPGA_STATUS_MASK_S_READY 8         // 1 == ready to receive data
-#define COBI_FPGA_STATUS_MASK_READ_COUNT 0x7F0  // Read FIFO Count
+#define COBI_NUM_CHIPS 4
+const int COBI_FPGA_ADDR_READ[COBI_NUM_CHIPS] = {
+    COBI_FPGA_ADDR_READ_CHIP1,
+    COBI_FPGA_ADDR_READ_CHIP2,
+    COBI_FPGA_ADDR_READ_CHIP3,
+    COBI_FPGA_ADDR_READ_CHIP4
+};
+
+/* #define COBI_FPGA_STATUS_MASK_STATUS 1    // 1 == Controller is busy */
+#define COBI_FPGA_STATUS_READ_ALL_EMPTY   1      // 0 == Read FIFO Empty
+#define COBI_FPGA_STATUS_READ_EMPTY_CHIP1 (1 << 1) // 1 == Chip 1's Read FIFO Empty
+#define COBI_FPGA_STATUS_READ_EMPTY_CHIP2 (1 << 2) // 1 == Chip 2's Read FIFO Empty
+#define COBI_FPGA_STATUS_READ_EMPTY_CHIP3 (1 << 3) // 1 == Chip 3's Read FIFO Empty
+#define COBI_FPGA_STATUS_READ_EMPTY_CHIP4 (1 << 4) // 1 == Chip 4's Read FIFO Empty
+
+#define COBI_FPGA_STATUS_S_READY_ALL   (1 << 5)    // 1 == At least one chip ready to receive data
+#define COBI_FPGA_STATUS_S_READY_CHIP1 (1 << 6)    // 1 == Chip 1 is ready to receive data
+#define COBI_FPGA_STATUS_S_READY_CHIP2 (1 << 7)    // 1 == Chip 2 is ready to receive data
+#define COBI_FPGA_STATUS_S_READY_CHIP3 (1 << 8)    // 1 == Chip 3 is ready to receive data
+#define COBI_FPGA_STATUS_S_READY_CHIP4 (1 << 9)    // 1 == Chip 4 is ready to receive data
+
+#define COBI_FPGA_STATUS_WRITE_FULL  (1 << 10) // 1 == Write FIFO is full
+#define COBI_FPGA_STATUS_WRITE_EMPTY (1 << 11) // 1 == Write FIFO is empty
+
+/* #define COBI_FPGA_STATUS_READ_FIFO_FULL  4 // 1 == Read FIFO Full */
+/* #define COBI_FPGA_STATUS_READ_COUNT 0x7F0  // Read FIFO Count */
 
 #define COBI_FPGA_STATUS_VALUE_S_READY 8
 
