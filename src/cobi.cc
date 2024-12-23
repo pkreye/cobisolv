@@ -386,6 +386,30 @@ uint8_t hex_mapping(int val)
 }
 
 // FPGA interface functions
+uint32_t cobi_get_fw_id(int cobi_id)
+{
+    uint32_t read_data;
+    off_t read_offset;
+    read_offset = COBI_FPGA_ADDR_FW_ID * sizeof(uint32_t); // read fifo empty status
+
+    // Write read offset to device
+    if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+        perror("Failed to set read offset in device");
+        close(cobi_fds[cobi_id]);
+        exit(1);
+    }
+
+    // Read data from device
+    if (read(cobi_fds[cobi_id], &read_data, sizeof(read_data)) != sizeof(read_data)) {
+        perror("Failed to read from device");
+        close(cobi_fds[cobi_id]);
+        exit(1);
+    }
+
+    /* printf("COBIFIVE status succeeding read: 0x%x\n", read_data); */
+    return read_data;
+}
+
 uint32_t cobi_read_status(int cobi_id)
 {
     uint32_t read_data;
@@ -1200,6 +1224,13 @@ int cobi_init(int *req_num_devices, int specific_card)
     }
 
     for(int i = 0; i < cobi_num_open; i++) {
+        // Verify expected firmware
+        uint32_t fwid = cobi_get_fw_id(i);
+        if (fwid != COBIFIVE_FW_ID) {
+            fprintf(stderr, "COBI device has unexpected firmware id: 0x%x\n", fwid);
+            return 1;
+        }
+
         cobi_reset(i);
     }
 
