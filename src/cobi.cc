@@ -386,23 +386,25 @@ uint8_t hex_mapping(int val)
 }
 
 // FPGA interface functions
-uint32_t cobi_get_fw_id(int cobi_id)
+
+// Since firmware ID needs to be checked during init, pass the fd directly
+uint32_t _cobi_get_fw_id(int fd)
 {
     uint32_t read_data;
     off_t read_offset;
     read_offset = COBI_FPGA_ADDR_FW_ID * sizeof(uint32_t); // read fifo empty status
 
     // Write read offset to device
-    if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+    if (write(fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
         perror("Failed to set read offset in device");
-        close(cobi_fds[cobi_id]);
+        close(fd);
         exit(1);
     }
 
     // Read data from device
-    if (read(cobi_fds[cobi_id], &read_data, sizeof(read_data)) != sizeof(read_data)) {
+    if (read(fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
         perror("Failed to read from device");
-        close(cobi_fds[cobi_id]);
+        close(fd);
         exit(1);
     }
 
@@ -1192,28 +1194,33 @@ int cobi_init(int *req_num_devices, int specific_card)
 
     for(int cur_dev = 0; cur_dev < num_dev_available; cur_dev++) {
         char *cur_dev_file = cobi_dev_glob.gl_pathv[cur_dev];
-            // device exists and we can try to open and claim it
-            if (Verbose_ > 2) {
-                printf("trying device %s\n", cur_dev_file);
+        // device exists and we can try to open and claim it
+        if (Verbose_ > 2) {
+            printf("trying device %s\n", cur_dev_file);
+        }
+
+        int fd = open(cur_dev_file, O_RDWR);
+        if (fd < 0) {
+            if (Verbose_ > 1) {
+                printf("failed to open %s\n", cur_dev_file);
             }
-
-            int fd = open(cur_dev_file, O_RDWR);
-            if (fd < 0) {
-                if (Verbose_ > 1) {
-                    printf("failed to open %s\n", cur_dev_file);
-                }
-            } else {
-                if (Verbose_ > 1) {
-                    printf("card %d, id %d\n", cur_dev, cobi_num_open);
-                }
-
+        } else {
+            if (Verbose_ > 1) {
+                printf("card %d, id %d\n", cur_dev, cobi_num_open);
+            }
+            // Verify expected firmware
+            uint32_t fwid = _cobi_get_fw_id(fd);
+            if (fwid == COBIFIVE_FW_ID) {
                 cobi_fds[cobi_num_open++] = fd;
 
                 if (cobi_num_open >= *req_num_devices) {
                     break;
                 }
+            } else if (Verbose_ > 1) {
+                printf("COBI device has unexpected firmware id: 0x%x\n", fwid);
             }
         }
+    }
 
     // Update requested number of devices with the the number of devices we were able to open
     *req_num_devices = cobi_num_open;
@@ -1224,13 +1231,6 @@ int cobi_init(int *req_num_devices, int specific_card)
     }
 
     for(int i = 0; i < cobi_num_open; i++) {
-        // Verify expected firmware
-        uint32_t fwid = cobi_get_fw_id(i);
-        if (fwid != COBIFIVE_FW_ID) {
-            fprintf(stderr, "COBI device has unexpected firmware id: 0x%x\n", fwid);
-            return 1;
-        }
-
         cobi_reset(i);
     }
 
