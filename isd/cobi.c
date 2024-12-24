@@ -282,6 +282,30 @@ void free_cobi_data(CobiData *d)
     free(d);
 }
 
+uint32_t _cobi_get_fw_id(int fd)
+{
+    uint32_t read_data;
+    off_t read_offset;
+    read_offset = COBI_FPGA_ADDR_FW_ID * sizeof(uint32_t); // read fifo empty status
+
+    // Write read offset to device
+    if (write(fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+        perror("Failed to set read offset in device");
+        close(fd);
+        exit(1);
+    }
+
+    // Read data from device
+    if (read(fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
+        perror("Failed to read from device");
+        close(fd);
+        exit(1);
+    }
+
+    /* printf("COBIFIVE status succeeding read: 0x%x\n", read_data); */
+    return read_data;
+}
+
 // @param weights input 2d array of ints values must be in range -7 to 7.
 // Assumed not to use main diagonal. Local field values should be encoded in first row/col.
 // @param program_array output matrix. Assumes program_array was initialized to 0 to start.
@@ -618,6 +642,12 @@ int cobi_open_device(int device)
     cobi_fd = open(device_file, O_RDWR); // O_RDWR to allow both reading and writing
     if (cobi_fd < 0) {
         perror("Failed to open device file");
+        exit(2);
+    }
+
+    uint32_t fwid = _cobi_get_fw_id(cobi_fd);
+    if (fwid != COBIFIVE_FW_ID) {
+        fprintf(stderr, "Bad firmware ID (0x%x) for device %d\n", fwid, device);
         exit(2);
     }
 
