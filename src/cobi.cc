@@ -386,23 +386,23 @@ uint8_t hex_mapping(int val)
 }
 
 // FPGA interface functions
-uint32_t cobi_get_fw_id(int cobi_id)
+uint32_t _cobi_get_fw_id(int fd)
 {
     uint32_t read_data;
     off_t read_offset;
     read_offset = COBI_FPGA_ADDR_FW_ID * sizeof(uint32_t); // read fifo empty status
 
     // Write read offset to device
-    if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
+    if (write(fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
         perror("Failed to set read offset in device");
-        close(cobi_fds[cobi_id]);
+        close(fd);
         exit(1);
     }
 
     // Read data from device
-    if (read(cobi_fds[cobi_id], &read_data, sizeof(read_data)) != sizeof(read_data)) {
+    if (read(fd, &read_data, sizeof(read_data)) != sizeof(read_data)) {
         perror("Failed to read from device");
-        close(cobi_fds[cobi_id]);
+        close(fd);
         exit(1);
     }
 
@@ -704,14 +704,22 @@ int bits_to_signed_int(uint8_t *bits, unsigned int num_bits)
     /* return (n & s - 1) - (n & s) */
 }
 
-int cobi_read_result(int chip_to_read, CobiOutput *output)
+int cobi_read_result(int cobi_id, int chip_index, CobiOutput *output)
 {
     uint8_t bits[COBI_CHIP_OUTPUT_LEN] = {0};
     int num_read_bits = 32;
+    uint32_t read_data;
+    off_t read_offset;
+
+    if (chip_index < 0 || chip_index >= COBI_NUM_CHIPS) {
+        fprintf(stderr, "Bad chip index %d\n", chip_index);
+    }
+
+    int read_addr = COBI_FPGA_ADDR_READ_CHIP[chip_index];
 
     // Read one result from chip
     for (int i = 0; i < COBI_CHIP_OUTPUT_READ_COUNT; ++i) {
-        read_offset = COBI_FPGA_ADDR_READ * sizeof(uint32_t);
+        read_offset = read_addr * sizeof(uint32_t);
 
         // Write read offset to device
         if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
@@ -801,14 +809,14 @@ int cobi_read(int cobi_id, CobiOutput *output, bool wait_for_result)
 
     if (result_ready) {
         for (int i = 0; i < COBI_NUM_CHIPS; i++) {
-        if (BITMASK_IS_ZERO(cobi_status, COBI_FPGA_STATUS_EMPTY_CHIP1)) {
-            // Chip i has a result
-            int read_addr = COBI_FPGA_ADDR_READ[i];
-            cobi_read_result(read_addr, output[result_count]);
+            if (BITMASK_IS_ZERO(cobi_status, COBI_FPGA_STATUS_READ_EMPTY[i])) {
+                // Chip i has a result
+                cobi_read_result(cobi_id, i, output[result_count]);
+            }
         }
-    }
 
-    return result_count;
+        return result_count;
+    }
 }
 
 int *cobi_test_multi_times(
@@ -924,9 +932,8 @@ int *cobi_test_multi_times(
 
 void cobi_norm_scaled(int **norm, double **ising, size_t size, double scale)
 {
-    // compress to avoid known hw bug
-    const int WEIGHT_MAX = 12;
-    const int WEIGHT_MIN = -12;
+    const int WEIGHT_MAX = 14;
+    const int WEIGHT_MIN = -14;
     for (size_t i = 0; i < size; i++) {
         for (size_t j = i; j < size; j++) {
             double cur_val = ising[i][j];
@@ -1080,16 +1087,19 @@ void cobi_norm_val(
     case COBI_EVAL_NORM_MIXED: {
         switch (prob_num) {
         case 0:
-            cobi_norm_nonlinear(norm_ising, ising, num_spins, 1);
+            cobi_norm_linear(norm_ising, ising, num_spins, 2);
             break;
         case 1:
-            cobi_norm_linear(norm_ising, ising, num_spins, 1);
+            cobi_norm_linear(norm_ising, ising, num_spins, 4);
             break;
         case 2:
-            cobi_norm_scaled(norm_ising, ising, num_spins, 2);
+            cobi_norm_scaled(norm_ising, ising, num_spins, 1);
             break;
         case 3:
             cobi_norm_nonlinear(norm_ising, ising, num_spins, 2);
+            break;
+        case 4:
+            cobi_norm_nonlinear(norm_ising, ising, num_spins, 0.5);
             break;
         default:
             perror("Bad prob num\n");
@@ -1202,28 +1212,33 @@ int cobi_init(int *req_num_devices, int specific_card)
 
     for(int cur_dev = 0; cur_dev < num_dev_available; cur_dev++) {
         char *cur_dev_file = cobi_dev_glob.gl_pathv[cur_dev];
-            // device exists and we can try to open and claim it
-            if (Verbose_ > 2) {
-                printf("trying device %s\n", cur_dev_file);
+        // device exists and we can try to open and claim it
+        if (Verbose_ > 2) {
+            printf("trying device %s\n", cur_dev_file);
+        }
+
+        int fd = open(cur_dev_file, O_RDWR);
+        if (fd < 0) {
+            if (Verbose_ > 1) {
+                printf("failed to open %s\n", cur_dev_file);
             }
-
-            int fd = open(cur_dev_file, O_RDWR);
-            if (fd < 0) {
-                if (Verbose_ > 1) {
-                    printf("failed to open %s\n", cur_dev_file);
-                }
-            } else {
-                if (Verbose_ > 1) {
-                    printf("card %d, id %d\n", cur_dev, cobi_num_open);
-                }
-
+        } else {
+            if (Verbose_ > 1) {
+                printf("card %d, id %d\n", cur_dev, cobi_num_open);
+            }
+            // Verify expected firmware
+            uint32_t fwid = _cobi_get_fw_id(fd);
+            if (fwid == COBIFIVE_QUAD_FW_ID) {
                 cobi_fds[cobi_num_open++] = fd;
 
                 if (cobi_num_open >= *req_num_devices) {
                     break;
                 }
+            } else if (Verbose_ > 1) {
+                fprintf(stderr, "COBI device has unexpected firmware id: 0x%x\n", fwid);
             }
         }
+    }
 
     // Update requested number of devices with the the number of devices we were able to open
     *req_num_devices = cobi_num_open;
@@ -1234,13 +1249,6 @@ int cobi_init(int *req_num_devices, int specific_card)
     }
 
     for(int i = 0; i < cobi_num_open; i++) {
-        // Verify expected firmware
-        uint32_t fwid = cobi_get_fw_id(i);
-        if (fwid != COBIFIVE_QUAD_FW_ID) {
-            fprintf(stderr, "COBI device has unexpected firmware id: 0x%x\n", fwid);
-            return 1;
-        }
-
         cobi_reset(i);
     }
 
@@ -1278,7 +1286,7 @@ void cobi_solver(
     if (params->eval_strat == COBI_EVAL_SINGLE) {
         num_probs = 1;
     } else {
-        num_probs = 4;
+        num_probs = 5;
     }
 
     // TODO move away from using CobiData. Doesn't make much sense any more.
