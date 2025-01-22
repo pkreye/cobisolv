@@ -17,7 +17,7 @@ SOLVER_SPINS = 45
 HWDEBUG = 0
 LF_SIZE = 1
 SCALE = 4
-DEVICE = 1
+DEVICE = 0
 # 0 for "/dev/cobi_pcie_card0"
 # 1 for "/dev/cobi_pcie_card1"
 # 2 for "/dev/cobi_pcie_card2"

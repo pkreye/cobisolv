@@ -386,11 +386,13 @@ uint8_t hex_mapping(int val)
 }
 
 // FPGA interface functions
-uint32_t _cobi_get_fw_id(int fd)
+
+// Not intended to be called directly. Use `cobi_fpga_read` instead.
+uint32_t _cobi_fpga_read_raw(int fd, int read_addr)
 {
     uint32_t read_data;
     off_t read_offset;
-    read_offset = COBI_FPGA_ADDR_FW_ID * sizeof(uint32_t); // read fifo empty status
+    read_offset = read_addr * sizeof(uint32_t); // read fifo empty status
 
     // Write read offset to device
     if (write(fd, &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
@@ -410,28 +412,26 @@ uint32_t _cobi_get_fw_id(int fd)
     return read_data;
 }
 
+// Used to check firmware ID before assigning a cobi device ID.
+uint32_t cobi_get_fw_id(int fd)
+{
+    return _cobi_fpga_read_raw(fd, COBI_FPGA_ADDR_FW_ID);
+}
+
+// Used to check firmware revision before assigning a cobi device ID.
+uint32_t cobi_get_fw_rev(int fd)
+{
+    return _cobi_fpga_read_raw(fd, COBI_FPGA_ADDR_FW_REV);
+}
+
+uint32_t cobi_fpga_read(int cobi_id, int read_addr)
+{
+    return _cobi_fpga_read_raw(cobi_fds[cobi_id], read_addr);
+}
+
 uint32_t cobi_read_status(int cobi_id)
 {
-    uint32_t read_data;
-    off_t read_offset;
-    read_offset = COBI_FPGA_ADDR_STATUS * sizeof(uint32_t); // read fifo empty status
-
-    // Write read offset to device
-    if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
-        perror("Failed to set read offset in device");
-        close(cobi_fds[cobi_id]);
-        exit(1);
-    }
-
-    // Read data from device
-    if (read(cobi_fds[cobi_id], &read_data, sizeof(read_data)) != sizeof(read_data)) {
-        perror("Failed to read from device");
-        close(cobi_fds[cobi_id]);
-        exit(1);
-    }
-
-    /* printf("COBIFIVE status succeeding read: 0x%x\n", read_data); */
-    return read_data;
+    return cobi_fpga_read(cobi_id, COBI_FPGA_ADDR_STATUS);
 }
 
 bool cobi_has_result(int cobi_id)
@@ -516,14 +516,14 @@ void cobi_prepare_weights(
 ) {
     int mapped_shil_val = hex_mapping(shil_val);
 
-    if (Verbose_ > 3) {
-        printf("==\n");
-        printf("Preparing Program:\n");
-        _print_array2d_uint8(
-            program_array, COBI_PROGRAM_MATRIX_WIDTH, COBI_PROGRAM_MATRIX_HEIGHT
-        );
-        printf("==\n");
-    }
+    // if (Verbose_ > 3) {
+    //     printf("==\n");
+    //     printf("Preparing Program:\n");
+    //     _print_array2d_uint8(
+    //         program_array, COBI_PROGRAM_MATRIX_WIDTH, COBI_PROGRAM_MATRIX_HEIGHT
+    //     );
+    //     printf("==\n");
+    // }
 
     // initialize outer rows
     for(int k = 0; k < COBI_PROGRAM_MATRIX_WIDTH; k++) {
@@ -704,22 +704,21 @@ int bits_to_signed_int(uint8_t *bits, unsigned int num_bits)
     /* return (n & s - 1) - (n & s) */
 }
 
-int cobi_read_result(int cobi_id, int chip_index, CobiOutput *output)
+void cobi_read_result(int cobi_id, CobiOutput *output)
 {
     uint8_t bits[COBI_CHIP_OUTPUT_LEN] = {0};
     int num_read_bits = 32;
     uint32_t read_data;
     off_t read_offset;
 
-    if (chip_index < 0 || chip_index >= COBI_NUM_CHIPS) {
-        fprintf(stderr, "Bad chip index %d\n", chip_index);
-    }
-
-    int read_addr = COBI_FPGA_ADDR_READ_CHIP[chip_index];
+    // if (chip_index < 0 || chip_index >= COBI_NUM_CHIPS) {
+    //     fprintf(stderr, "Bad chip index %d\n", chip_index);
+    // }
+    // int read_addr = COBI_FPGA_ADDR_READ_CHIP[chip_index];
 
     // Read one result from chip
     for (int i = 0; i < COBI_CHIP_OUTPUT_READ_COUNT; ++i) {
-        read_offset = read_addr * sizeof(uint32_t);
+        read_offset = COBI_FPGA_ADDR_READ * sizeof(uint32_t);
 
         // Write read offset to device
         if (write(cobi_fds[cobi_id], &read_offset, sizeof(read_offset)) != sizeof(read_offset)) {
@@ -808,15 +807,16 @@ int cobi_read(int cobi_id, CobiOutput *output, bool wait_for_result)
     }
 
     if (result_ready) {
-        for (int i = 0; i < COBI_NUM_CHIPS; i++) {
-            if (BITMASK_IS_ZERO(cobi_status, COBI_FPGA_STATUS_READ_EMPTY[i])) {
-                // Chip i has a result
-                cobi_read_result(cobi_id, i, output[result_count]);
-            }
-        }
-
-        return result_count;
+        // for (int i = 0; i < COBI_NUM_CHIPS; i++) {
+        //     if (BITMASK_IS_ZERO(cobi_status, COBI_FPGA_STATUS_READ_EMPTY[i])) {
+        // Chip i has a result
+        cobi_read_result(cobi_id, output);
+        result_count++;
+        // }
+        // }
     }
+
+    return result_count;
 }
 
 int *cobi_test_multi_times(
@@ -1226,16 +1226,22 @@ int cobi_init(int *req_num_devices, int specific_card)
             if (Verbose_ > 1) {
                 printf("card %d, id %d\n", cur_dev, cobi_num_open);
             }
+
             // Verify expected firmware
-            uint32_t fwid = _cobi_get_fw_id(fd);
-            if (fwid == COBIFIVE_QUAD_FW_ID) {
+            uint32_t fwid = cobi_get_fw_id(fd);
+            uint32_t revid = cobi_get_fw_rev(fd);
+            if (fwid == COBIFIVE_QUAD_FW_ID && revid == COBIFIVE_QUAD_FW_REV) {
                 cobi_fds[cobi_num_open++] = fd;
 
                 if (cobi_num_open >= *req_num_devices) {
                     break;
                 }
             } else if (Verbose_ > 1) {
-                fprintf(stderr, "COBI device has unexpected firmware id: 0x%x\n", fwid);
+                fprintf(
+                    stderr,
+                    "COBI device has unexpected firmware id: 0x%x, rev: 0x%x\n",
+                    fwid, revid
+                );
             }
         }
     }
@@ -1289,7 +1295,7 @@ void cobi_solver(
         num_probs = 5;
     }
 
-    // TODO move away from using CobiData. Doesn't make much sense any more.
+    // TODO move away from using CobiData to reduce number of dynamic memory allocations
     CobiData *cobi_data = cobi_data_mk(num_spins, num_probs);
 
     // Convert problem from QUBO to Ising

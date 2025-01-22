@@ -389,7 +389,7 @@ void cobi_wait_for_write(int cobi_fd)
             exit(2);
         }
 
-        if((read_data & COBI_FPGA_STATUS_MASK_S_READY) == COBI_FPGA_STATUS_VALUE_S_READY) {
+        if((read_data & COBI_FPGA_STATUS_S_READY_ALL) == COBI_FPGA_STATUS_S_READY_ALL) {
             break;
         }
     }
@@ -418,9 +418,7 @@ void cobi_wait_for_read(int cobi_fd)
         }
 
         // Check there is at least one result to be read
-        if((read_data & COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY) !=
-           COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY
-          ) {
+        if((read_data & COBI_FPGA_STATUS_READ_ALL_EMPTY) == 0) {
             break;
         }
     }
@@ -455,16 +453,8 @@ bool cobi_has_result(int cobi_fd)
     uint32_t read_data = cobi_read_status(cobi_fd);
 
     // Check there is at least one result to be read
-    bool has_result = (read_data & COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY) != COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY;
+    bool has_result = (read_data & COBI_FPGA_STATUS_READ_ALL_EMPTY) == 0;
     return has_result;
-}
-
-int cobi_get_result_count(int cobi_fd)
-{
-    uint32_t read_data = cobi_read_status(cobi_fd);
-
-    int read_count = (read_data & COBI_FPGA_STATUS_MASK_READ_COUNT) >> 4;
-    return read_count;
 }
 
 // Read a single result from the given COBI device.
@@ -543,8 +533,8 @@ int cobi_read(int cobi_fd, CobiOutput *result, bool wait_for_result)
         // Parse energy from last 15 bits
         result->energy = bits_to_signed_int(&bits[bit_index], 15);
 
-        // check if another result is ready
-        result_ready = cobi_has_result(cobi_fd);
+        /* // check if another result is ready */
+        /* result_ready = cobi_has_result(cobi_fd); */
     }
 
     return result_count;
