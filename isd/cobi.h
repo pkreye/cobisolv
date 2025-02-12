@@ -18,8 +18,9 @@
 
 // FPGA
 
-#define COBIFIVE_FW_ID 0xaa558822
+// Currently supported FW ID and Revision
 #define COBIFIVE_QUAD_FW_ID 0xAA558823
+#define COBIFIVE_QUAD_FW_REV 0x3
 
 #define COBI_FPGA_ADDR_READ 4
 #define COBI_FPGA_ADDR_CONTROL 8

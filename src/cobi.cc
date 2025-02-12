@@ -507,8 +507,8 @@ void cobi_serialize_programming_bits(
     }
 }
 
-// @param weights input 2d array of ints, values must be in range -7 to 7.
 // Main diagonal encodes local field values and can be in range -14 to 14.
+// @param weights input 2d array of ints, values must be in range -7 to 7.
 // @param program_array output array. Assumed to be initialized to 0.
 //
 void cobi_prepare_weights(
@@ -1011,6 +1011,7 @@ void cobi_norm_nonlinear(int **norm, double **ising, size_t size, double scale)
     }
 }
 
+// Produces normalized problem, keeps linear terms in diagonal
 void cobi_norm_linear(int **norm, double **ising, size_t size, double scale)
 {
     double min = 0;

@@ -29,10 +29,74 @@ uint8_t default_control_nibbles[COBI_CONTROL_NIBBLES_LEN] = {
     0, 0, 0xF, 0xD    // sample_time
 };
 
+/* uint8_t default_control_nibbles[COBI_CONTROL_NIBBLES_LEN] = { */
+/*     // 0000111111AAAAAAAAAB C000 000A 000A 0001 0000 0004 0004 0180 */
+/*     0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, */
+/*     0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, 0xA, */
+/*     0xC, 0x0, 0x0, 0x0, // pid */
+/*     0, 0, 0, A, // dco_data */
+/*     0, 0, 0, 4, // sample_delay */
+/*     0, 0, 0, 1, //  max_fails */
+/*     0, 0, 0, 0, // rosc_time */
+/*     0, 0, 0, 4, // shil_time */
+/*     0, 0, 0, 0, // weight_time */
+/*     0, 0x1, 0x8, 0x0   // sample_time */
+/* }; */
+
 // -- End globals --
 
 
 // --  Misc utility --
+/* void uint16_to_nibbles(uint16_t val, uint8_t *nibs) */
+/* { */
+/*     nibs[0] = (val & 0xF000) >> 12; */
+/*     nibs[1] = (val & 0x0F00) >> 8; */
+/*     nibs[2] = (val & 0x00F0) >> 4; */
+/*     nibs[3] = (val & 0x000F); */
+/* } */
+
+/* uint8_t *mk_control_nibbles( */
+/*     uint16_t pid, */
+/*     uint16_t dco, */
+/*     uint16_t sample_delay, */
+/*     uint16_t max_fails, */
+/*     uint16_t rosc_time, */
+/*     uint16_t shil_time, */
+/*     uint16_t weight_time, */
+/*     uint16_t sample_time */
+/* ) { */
+/*     uint8_t *data = (uint8_t *)malloc(sizeof(uint8_t) * COBI_CONTROL_NIBBLES_LEN); */
+/*     int index = 0; */
+/*     for (index = 0; index < 20; index++) { */
+/*         data[index] = 0xA; */
+/*     } */
+
+/*     uint16_to_nibbles(pid, &data[index]); */
+/*     index += 4; */
+
+/*     uint16_to_nibbles(dco, &data[index]); */
+/*     index += 4; */
+
+/*     uint16_to_nibbles(sample_delay, &data[index]); */
+/*     index += 4; */
+
+/*     uint16_to_nibbles(max_fails, &data[index]); */
+/*     index += 4; */
+
+/*     uint16_to_nibbles(rosc_time, &data[index]); */
+/*     index += 4; */
+
+/*     uint16_to_nibbles(shil_time, &data[index]); */
+/*     index += 4; */
+
+/*     uint16_to_nibbles(weight_time, &data[index]); */
+/*     index += 4; */
+
+/*     uint16_to_nibbles(sample_time, &data[index]); */
+/*     index += 4; */
+
+/*     return data; */
+/* } */
 
 uint64_t swap_bytes(uint64_t val) {;
 
@@ -680,7 +744,7 @@ void solveQ(int device, CobiInput* obj, CobiOutput *result)
     // Open device
 
     int cobi_fd = cobi_open_device(device);
-    cobi_reset(cobi_fd);
+    //cobi_reset(cobi_fd);
 
     // Write problem to device
 
