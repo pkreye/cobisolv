@@ -8,26 +8,28 @@ from time import time
 from math import ceil, log2
 from collections import deque
 from itertools import groupby
-from wrapper import w_solveQ
+import cobi
 
 
 # input_dir = "./QUICC_Datasets_3SAT/batch-03"
 # filename = "3block-like-rand-00000-0027"
-# extension = '.cnf'
-
-input_dir = "/home/chriskim00/efe00002/cobisolv/isd/QUICC_Datasets_3SAT/batch-06"
+input_dir = "../data/N_eq_50_seen/"
+filename = "01"
+extension = '.cnf'
+LOG_PROBS = True
+#input_dir = "/home/chriskim00/efe00002/cobisolv/isd/QUICC_Datasets_3SAT/batch-06"
 #filename = "stat-hard-4SAT-r-3-024781-0082"
 #filename = 'stat-hard-6SAT-r-4-0000'
-filename = 'stat-hard-4SAT-r-3-003397-0033'
-extension = '.cnf'
-device_lock = None
+#filename = 'stat-hard-4SAT-r-3-003397-0033'
+#extension = '.cnf'
+#device_lock = None
 
 NUM_ITERS = 100
 SOLVER_SPINS = 45
 HWDEBUG = 0
 LF_SIZE = 1
 SCALE = 4
-DEVICE = 1
+#DEVICE = 1
 # 0 for "/dev/cobi_pcie_card0"
 # 1 for "/dev/cobi_pcie_card1"
 # 2 for "/dev/cobi_pcie_card2"
@@ -153,7 +155,7 @@ def report_globals():
 
     return user_defined_globals
 
-def cobidualres_sample(Q_orig, surrogate_vars, HWDEBUG, DEVICE, device_lock):
+def cobi_sample(Q_orig, surrogate_vars, HWDEBUG):
     variables = [x-1 for x in surrogate_vars] #indexing bug fix
 #    variables = []
     for (i,j),w in Q_orig.items():
@@ -182,25 +184,35 @@ def cobidualres_sample(Q_orig, surrogate_vars, HWDEBUG, DEVICE, device_lock):
                 J[ix, iy] = (SCALE*J[ix, iy])
             mtx[ix][iy] = mtx[iy][ix] = -J[ix, iy]
 
-    ising = {'Q': [[int(0)] * 46] * 46, 'debug': HWDEBUG}
-    ising['Q'] = mtx.tolist()
+    ising = {'problem': [[int(0)] * 46] * 46}
+    ising['problem'] = mtx.tolist()
 
-    result = {'problem_id': 0, 'energy': 0, 'spins': [0] * 46, 'core_id':0}
+    # print(ising['problem'])
+    # exit(1)
 
-    w_submit_problem(DEVICE, ising)
-    result = w_read_result_blocking(DEVICE)
+    # result = {'problem_id': 0, 'energy': 0, 'spins': [0] * 46, 'core_id':0}
+
+    # w_submit_problem(DEVICE, ising)
+    # result = w_read_result_blocking(DEVICE)
     # result = w_solveQ(ising,result,DEVICE)
+
+    tic = time()
+    result = cobi.run_native_problem(ising)
+    toc = time()
+    cobi_time = toc - tic
 
     # print(result)
 
-    best_sample = result["spins"]
+    # LFO spin is not returned by cobiserv wrapper, for now extend array with a leading 1
+    best_sample = [1] + result["spins"]
 
     # ising = {'Q': [[int(0)] * 46] * 46, 'energy': 0, 'spins': [0] * 46, 'debug': HWDEBUG}
     # ising['Q'] = mtx.tolist()
-    # with open('prob.log', 'a') as problog:
-    #     for row in ising['Q']:
-    #         problog.write(str(row))
-    #     problog.write('\n==\n')
+    if LOG_PROBS:
+        with open('prob.log', 'a') as problog:
+            for row in ising['problem']:
+                problog.write(str(row))
+            problog.write('\n==\n')
     # #print(ising)
     # #exit()
     # tic = time()
@@ -237,7 +249,7 @@ def cobidualres_sample(Q_orig, surrogate_vars, HWDEBUG, DEVICE, device_lock):
     for v in range(len(variables)):
         samples[variables[v]] = best_sample_binary[v]
 
-    return samples,lock_waiting_time, PCIE_time, clamped
+    return samples, cobi_time, clamped
 
 def reduce_neighbors(G):
     G_remaining = G.copy()
@@ -987,7 +999,7 @@ def initialize_nodes(graph):
     #print(node_values)
     return node_values
 
-def main(input_dir,filename,extension,DEVICE,device_lock):
+def main(input_dir,filename,extension):
     NEIGHBOR_LIMIT = randint(1,50)
     #seed(1)
     cnf, maxvar,ksat = import_cnf(input_dir, filename + extension)
@@ -1045,7 +1057,7 @@ def main(input_dir,filename,extension,DEVICE,device_lock):
     all_nodes = list(G.nodes())
     total_varcnt = 0
     hardware_time = 0
-    locking_time = 0
+    # locking_time = 0
     total_PCIE_time = 0
     total_clamped = 0
     prop_cntr = 0
@@ -1185,10 +1197,10 @@ def main(input_dir,filename,extension,DEVICE,device_lock):
                 sanitized_Q[(i,j)] = w
         # Solve on chip
         tic = time()
-        state_sample_int,lock_waiting_time,PCIE_time,clamped = cobidualres_sample(sanitized_Q, surrogate_vars, HWDEBUG, DEVICE, device_lock)
+        state_sample_int,PCIE_time,clamped = cobi_sample(sanitized_Q, surrogate_vars, HWDEBUG)
         toc = time()
         hardware_time += toc - tic
-        locking_time += lock_waiting_time
+        # locking_time += lock_waiting_time
         total_clamped += clamped
         total_PCIE_time += PCIE_time
         # Update full solution
@@ -1227,7 +1239,9 @@ def main(input_dir,filename,extension,DEVICE,device_lock):
 
     #print('Iterations:', iteration, f'Time: {time()-time_start:4.6f}s')
     #print(f'{sat},{100*((valid_list)/len(cnf))},{iteration},{time()-time_start}')
-    return sat,100*((valid_list)/len(cnf)),iteration,time()-time_start,hardware_time,local_search,locking_time,total_PCIE_time,total_clamped/iteration,total_varcnt/iteration, NEIGHBOR_LIMIT
+    return sat,100*((valid_list)/len(cnf)),iteration,time()-time_start,hardware_time
+
+#,local_search,total_PCIE_time,total_clamped/iteration,total_varcnt/iteration, NEIGHBOR_LIMIT
 
 if __name__=="__main__":
-    main(input_dir,filename,extension,DEVICE, device_lock)
+    print(main(input_dir,filename,extension))
