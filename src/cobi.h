@@ -24,8 +24,8 @@ extern "C" {
 #define COBI_DEVICE_NAME_LEN 23 // assumes 2 digit card number and null byte
 #define COBI_DEVICE_NAME_TEMPLATE "/dev/cobi_pcie_card%hhu"
 
-#define COBI_WEIGHT_MATRIX_DIM 45
-#define COBI_NUM_SPINS 46             // size of weight matrix including the local field
+#define COBI_NUM_SPINS 45    // size of problem weight matrix
+#define COBI_HW_NUM_SPINS 46 // size of weight matrix including spin local field
 #define COBI_PROGRAM_MATRIX_HEIGHT 51
 #define COBI_PROGRAM_MATRIX_WIDTH 52
 #define COBI_SHIL_VAL 0
@@ -99,7 +99,7 @@ typedef enum {
 
 typedef struct CobiOutput {
     int problem_id;
-    int *spins;
+    int spins[COBI_NUM_SPINS];
     int energy;
     int core_id;
 } CobiOutput;
@@ -108,9 +108,9 @@ typedef struct CobiData {
     size_t probSize;
     size_t w;
     size_t h;
-    uint8_t **programming_bits;
+    /* uint8_t **programming_bits; */
     /* uint64_t *serialized_program; */
-    int serialized_len;
+    /* int serialized_len; */
 
     size_t num_outputs;
     CobiOutput **chip_output;
