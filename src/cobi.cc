@@ -766,8 +766,8 @@ void cobi_read_result(int cobi_id, CobiOutput *output)
         // output->spins[i] = bits[bit_index++] == 0 ? 1 : -1;
     }
 
-    printf("\nLFO spin %d\n", bits[bit_index]);
-    bit_index++; // skip spin value for the linear term
+    // skip spin value for the linear term
+    bit_index++;
 
     // Parse energy from last 15 bits
     output->energy = bits_to_signed_int(&bits[bit_index], 15);
