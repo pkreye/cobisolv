@@ -301,10 +301,10 @@ void cobi_output_clear(CobiOutput *o, size_t num_spins)
     o->energy     = 0;
 }
 
-CobiOutput *cobi_output_mk_default(size_t num_spins)
+CobiOutput *cobi_output_mk_default()
 {
     CobiOutput *output = (CobiOutput*) malloc(sizeof(CobiOutput));
-    output->spins      = _malloc_array1d(num_spins);
+    memset(output->spins, 0, COBI_NUM_SPINS * sizeof(int));
     output->problem_id = -1;
     output->core_id    = -1;
     output->energy     = 0;
@@ -322,7 +322,7 @@ CobiData *cobi_data_mk(size_t num_spins, size_t num_samples)
     d->num_outputs = num_samples;
     d->chip_output = (CobiOutput**) malloc(sizeof(CobiOutput*) * num_samples);
     for (size_t i = 0; i < num_samples; i++) {
-        d->chip_output[i] = cobi_output_mk_default(num_spins);
+        d->chip_output[i] = cobi_output_mk_default();
     }
 
     return d;
@@ -330,7 +330,7 @@ CobiData *cobi_data_mk(size_t num_spins, size_t num_samples)
 
 void free_cobi_output(CobiOutput *o)
 {
-    free(o->spins);
+    // free(o->spins);
     free(o);
 }
 
@@ -445,7 +445,7 @@ bool cobi_has_result(int cobi_id)
 
 void cobi_flush_results(int cobi_id)
 {
-    CobiOutput *result = cobi_output_mk_default(COBI_NUM_SPINS);
+    CobiOutput *result = cobi_output_mk_default();
 
     // Read out all results
     while(cobi_has_result(cobi_id)) {
@@ -760,11 +760,14 @@ void cobi_read_result(int cobi_id, CobiOutput *output)
     }
 
     // Parse spins, from bit 8 to bit 53
-    for (int i = 0; i < 46; i++) {
+    for (int i = 0; i < COBI_NUM_SPINS; i++) {
         // reverse order of spins
         output->spins[COBI_NUM_SPINS - 1 - i] = bits[bit_index++] == 0 ? 1 : -1;
         // output->spins[i] = bits[bit_index++] == 0 ? 1 : -1;
     }
+
+    printf("\nLFO spin %d\n", bits[bit_index]);
+    bit_index++; // skip spin value for the linear term
 
     // Parse energy from last 15 bits
     output->energy = bits_to_signed_int(&bits[bit_index], 15);
@@ -785,8 +788,8 @@ void cobi_read_result(int cobi_id, CobiOutput *output)
 // If wait_for_result is set, block until a result becomes availble
 int cobi_read(int cobi_id, CobiOutput *output, bool wait_for_result)
 {
-    uint32_t read_data;
-    off_t read_offset;
+    // uint32_t read_data;
+    // off_t read_offset;
     int result_count = 0;
 
     // bool result_ready = cobi_has_result(cobi_id);

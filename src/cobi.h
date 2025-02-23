@@ -99,7 +99,7 @@ typedef enum {
 
 typedef struct CobiOutput {
     int problem_id;
-    int *spins;
+    int spins[COBI_NUM_SPINS];
     int energy;
     int core_id;
 } CobiOutput;
@@ -110,7 +110,7 @@ typedef struct CobiData {
     size_t h;
     /* uint8_t **programming_bits; */
     /* uint64_t *serialized_program; */
-    int serialized_len;
+    /* int serialized_len; */
 
     size_t num_outputs;
     CobiOutput **chip_output;
