@@ -375,15 +375,15 @@ int main(int argc, char *argv[]) {
             strcpy(algo_, "b");
         }
 
-        if (cobi_init(&param.num_sub_prob_threads, param.cobi_card_num) != 0) {
-            fprintf(stderr, "init failed\n");
-            exit(1);
-        }
+        /* if (cobi_init(&param.num_sub_prob_threads, param.cobi_card_num) != 0) { */
+        /*     fprintf(stderr, "init failed\n"); */
+        /*     exit(1); */
+        /* } */
 
-        if (atexit(cobi_close) != 0) {
-            fprintf(stderr, "failed to register exit function\n");
-            exit(1);
-        }
+        /* if (atexit(cobi_close) != 0) { */
+        /*     fprintf(stderr, "failed to register exit function\n"); */
+        /*     exit(1); */
+        /* } */
 
         if (param.cobi_num_samples < 1) {
             fprintf(stderr, "number of samples must be greater than 0.\n");

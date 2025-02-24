@@ -23,10 +23,6 @@
 
 #include <math.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // This function Simply evaluates the objective function for a given solution.
 //  call this to double check that a solution = energy
 // @param solution a current solution
@@ -1156,7 +1152,3 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
 
     return;
 }
-
-#ifdef __cplusplus
-}
-#endif
