@@ -849,7 +849,7 @@ int cobi_init(int *req_num_devices, int specific_card)
     char glob_pattern[25] = { 0 };
 
     if (specific_card >= 0) {
-        printf("Using COBI card %d", specific_card);
+        // printf("Using COBI card %d", specific_card);
         *req_num_devices = 1;
         snprintf(glob_pattern, sizeof(glob_pattern), COBI_DEVICE_NAME_TEMPLATE, specific_card);
     } else {
