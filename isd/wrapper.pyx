@@ -19,6 +19,13 @@ cdef extern from "cobi.c":
     void submit_problem(int device, CobiInput *obj)
     int read_result(int device, CobiOutput *result, bool wait_for_result)
 
+
+def w_open_device(int device):
+    cobi_open_device(device)
+
+def w_close_device(int device):
+    close(device)
+
 def w_solveQ(int device, CobiInput obj, CobiOutput output_obj):
     cdef CobiInput *input_ptr = &obj
     cdef CobiOutput *output_ptr = &output_obj

@@ -3,5 +3,5 @@ Run `make` to build python wrapper.
 Example setup with venv:
 
 python3 -m venv ./venv
-./venv/bin/pip install numpy networkx dimod
+./venv/bin/pip install numpy networkx dimod dwave-hybrid dwave-tabu
 ./venv/bin/python ksat_optimized.py

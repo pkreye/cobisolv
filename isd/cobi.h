@@ -19,18 +19,18 @@
 // FPGA
 #define COBIFIVE_FW_ID      0xAA558822
 
-#define COBI_FPGA_ADDR_FW_ID  1
+// Currently supported FW ID and Revision
+#define COBIFIVE_QUAD_FW_ID 0xAA558823
+#define COBIFIVE_QUAD_FW_REV 0x3
+
 #define COBI_FPGA_ADDR_READ 4
 #define COBI_FPGA_ADDR_CONTROL 8
 #define COBI_FPGA_ADDR_WRITE 9
 #define COBI_FPGA_ADDR_STATUS 10
 
-#define COBI_FPGA_STATUS_MASK_STATUS 1          // 1 == Controller is busy
-#define COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY 2 // 1 == Read FIFO Empty
-#define COBI_FPGA_STATUS_MASK_READ_FIFO_FULL  4 // 1 == Read FIFO Full
-#define COBI_FPGA_STATUS_MASK_S_READY 8         // 1 == ready to receive data
-#define COBI_FPGA_STATUS_MASK_READ_COUNT 0x7F0  // Read FIFO Count
+#define COBI_FPGA_STATUS_READ_ALL_EMPTY 1 // 1 == Read FIFO Empty
 
+#define COBI_FPGA_STATUS_S_READY_ALL (1 << 5)  // 1 == ready to receive data
 #define COBI_FPGA_STATUS_VALUE_S_READY 8
 
 #define COBI_FPGA_CONTROL_RESET 0

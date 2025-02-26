@@ -24,8 +24,8 @@ extern "C" {
 #define COBI_DEVICE_NAME_LEN 23 // assumes 2 digit card number and null byte
 #define COBI_DEVICE_NAME_TEMPLATE "/dev/cobi_pcie_card%hhu"
 
-#define COBI_WEIGHT_MATRIX_DIM 45
-#define COBI_NUM_SPINS 46             // size of weight matrix including the local field
+#define COBI_NUM_SPINS 45    // size of problem weight matrix
+#define COBI_HW_NUM_SPINS 46 // size of weight matrix including spin local field
 #define COBI_PROGRAM_MATRIX_HEIGHT 51
 #define COBI_PROGRAM_MATRIX_WIDTH 52
 #define COBI_SHIL_VAL 0
@@ -36,26 +36,38 @@ extern "C" {
 
 #define COBI_CONTROL_NIBBLES_LEN 52
 
+#define COBI_NUM_CHIPS 4
+
 // FPGA
-#define COBIFIVE_FW_ID      0xAA558822
+
+// Currently supported FW ID and Revision
 #define COBIFIVE_QUAD_FW_ID 0xAA558823
+#define COBIFIVE_QUAD_FW_REV 0x3
+
+// FPGA Memory map addresses
 
 #define COBI_FPGA_ADDR_FW_ID  1
 #define COBI_FPGA_ADDR_FW_REV 2
 #define COBI_FPGA_ADDR_READ 4
 #define COBI_FPGA_ADDR_CONTROL 8
-#define COBI_FPGA_ADDR_WRITE 9
+#define COBI_FPGA_ADDR_WRITE   9
 #define COBI_FPGA_ADDR_STATUS 10
 
-#define COBI_FPGA_STATUS_MASK_STATUS 1          // 1 == Controller is busy
-#define COBI_FPGA_STATUS_MASK_READ_FIFO_EMPTY 2 // 1 == Read FIFO Empty
-#define COBI_FPGA_STATUS_MASK_READ_FIFO_FULL  4 // 1 == Read FIFO Full
-#define COBI_FPGA_STATUS_MASK_S_READY 8         // 1 == ready to receive data
-#define COBI_FPGA_STATUS_MASK_READ_COUNT 0x7F0  // Read FIFO Count
+// FPGA values of interest
+
+#define COBI_FPGA_STATUS_READ_ALL_EMPTY   1      // 1 == Read FIFO Empty, 0 == Not Empty
+
+#define COBI_FPGA_STATUS_S_READY_ALL   (1 << 5)    // 1 == At least one chip ready to receive data
+/* #define COBI_FPGA_STATUS_S_READY_CHIP1 (1 << 6)    // 1 == Chip 1 is ready to receive data */
+/* #define COBI_FPGA_STATUS_S_READY_CHIP2 (1 << 7)    // 1 == Chip 2 is ready to receive data */
+/* #define COBI_FPGA_STATUS_S_READY_CHIP3 (1 << 8)    // 1 == Chip 3 is ready to receive data */
+/* #define COBI_FPGA_STATUS_S_READY_CHIP4 (1 << 9)    // 1 == Chip 4 is ready to receive data */
 
 #define COBI_FPGA_STATUS_VALUE_S_READY 8
 
 #define COBI_FPGA_CONTROL_RESET 0
+
+// Evaluation strategy names
 
 #define COBI_EVAL_STRING_LEN 2 // min len needed to differentiate the eval options
 #define COBI_EVAL_STRING_NAIVE          "naive"
@@ -85,7 +97,7 @@ typedef enum {
 
 typedef struct CobiOutput {
     int problem_id;
-    int *spins;
+    int spins[COBI_NUM_SPINS];
     int energy;
     int core_id;
 } CobiOutput;
@@ -94,9 +106,9 @@ typedef struct CobiData {
     size_t probSize;
     size_t w;
     size_t h;
-    uint8_t **programming_bits;
+    /* uint8_t **programming_bits; */
     /* uint64_t *serialized_program; */
-    int serialized_len;
+    /* int serialized_len; */
 
     size_t num_outputs;
     CobiOutput **chip_output;
