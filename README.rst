@@ -17,23 +17,7 @@ Installation or Building
 
 .. installation-start-marker
 
-To build cobisolv you will need to first install the `pigpio <https://github.com/joan2937/pigpio>`_
-library. Then use cmake to generate a build command for your system. On Linux the commands would be
-something like this:
-
-.. code-block:: bash
-
-    mkdir build; cd build
-    cmake ..
-    make
-
-To build the command line interface turn the cmake option `COBISOLV_BUILD_CMD` on. The command line
-option for cmake to do this would be `-DCOBISOLV_BUILD_CMD=ON`. To build the tests turn the cmake
-option `COBISOLV_BUILD_TESTS` on. The command line option for cmake to do this would be
-`-DCOBISOLV_BUILD_TESTS=ON`.
-
-For cross compiling to Raspberry Pi add the cmake option `-DCOBISOLV_CROSS_COMPILE=ON`. This will
-require that you cross compile pigpio as well.
+To build cobisolv run `make`.
 
 .. installation-end-marker
 
