@@ -777,8 +777,7 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
 
         // save best result
         best_energy = energy;
-        result = manage_solutions(solution, solution_list, energy, energy_list, solution_counts, Qindex, QLEN,
-                                  qubo_size, &num_nq_solutions);
+        result = manage_solutions(solution, solution_list, energy, energy_list, solution_counts, Qindex, QLEN,qubo_size, &num_nq_solutions);
         Qbest = &solution_list[Qindex[0]][0];
         solution_count = solution_counts[Qindex[0]];
 
@@ -792,18 +791,15 @@ void solve(double **qubo, const int qubo_size, int8_t **solution_list, double *e
             // DL;printf(" len_index %d %d \n",len_index,pass);
             randomize_solution(solution, qubo_size);
             energy = local_search(solution, qubo_size, qubo, flip_cost, &bit_flips);
-            result = manage_solutions(solution, solution_list, energy, energy_list, solution_counts, Qindex, QLEN,
-                                      qubo_size, &num_nq_solutions);
+            result = manage_solutions(solution, solution_list, energy, energy_list, solution_counts, Qindex, QLEN,qubo_size, &num_nq_solutions);
             len_index = mul_index_solution_diff(solution_list, num_nq_solutions, qubo_size, Pcompress, 0, Qindex);
             if (pass++ > 40) break;
             // printf(" len_index = %d  NU %d  energy %lf\n",len_index,NU,energy);
         }
         solution_population(solution, solution_list, num_nq_solutions, qubo_size, Qindex, 10);
         IterMax = bit_flips + (int64_t)MAX((int64_t)40, InitialTabuPass_factor * (int64_t)qubo_size / 2);
-        energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,
-                             TargetSet_, index, 0);
-        result = manage_solutions(solution, solution_list, energy, energy_list, solution_counts, Qindex, QLEN,
-                                  qubo_size, &num_nq_solutions);
+        energy = tabu_search(solution, tabu_solution, qubo_size, qubo, flip_cost, &bit_flips, IterMax, TabuK, Target_,TargetSet_, index, 0);
+        result = manage_solutions(solution, solution_list, energy, energy_list, solution_counts, Qindex, QLEN,qubo_size, &num_nq_solutions);
         Qbest = &solution_list[Qindex[0]][0];
         best_energy = energy_list[Qindex[0]];
         solution_count = solution_counts[Qindex[0]];

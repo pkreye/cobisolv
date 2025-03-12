@@ -170,10 +170,15 @@ int main(int argc, char *argv[]) {
             case 'h':
                 print_help();
                 exit(0);
-            case 'i':
+            case 'i': {
                 inFileName = optarg;
 
-                strncpy(param.problemName, inFileName, 24);
+                int len = strlen(inFileName);
+                if (len > 24) {
+                    strncpy(param.problemName, &inFileName[len - 24], 24);
+                } else {
+                    strncpy(param.problemName, inFileName, 24);
+                }
                 param.problemName[24] = '\0';
 
                 if ((inFile = fopen(inFileName, "r")) == NULL) {
@@ -184,6 +189,7 @@ int main(int argc, char *argv[]) {
                     exit(9);
                 }
                 break;
+            }
             case 'l':
                 Tlist_ = strtol(optarg, &chx, 10);  // this sets the length of the tabu list
                 break;
