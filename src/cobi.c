@@ -301,7 +301,7 @@ void cobi_norm_nonlinear(
             } else {
                 // Non-zero case
                 cur_val = scale * cur_val;
-                double fsig = (cur_val / (1.0 + abs(cur_val)));
+                double fsig = (cur_val / (1.0 + fabs(cur_val)));
                 int scaled_val = round(WEIGHT_MAX * fsig);
                 if (cur_val > 0) {
                     scaled_val = MIN(scaled_val, WEIGHT_MAX);
@@ -474,12 +474,14 @@ void ising_from_qubo(double ising[][COBI_NUM_SPINS], double **qubo)
         ising[i][i] = qubo[i][i] / 2;
 
         for (int j = i + 1; j < COBI_NUM_SPINS; j++) {
+            double val =  qubo[i][j] / 4;
+
             // convert quadratic terms
-            ising[i][j] = qubo[i][j] / 4;
-            ising[j][i] = qubo[j][i] / 4;
+            ising[i][j] = val;
 
             // add rest of linear term
-            ising[i][i] += ising[i][j] + ising[j][i];
+            ising[i][i] += val;
+            ising[j][j] += val;
         }
     }
 }
