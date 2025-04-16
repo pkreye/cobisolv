@@ -324,7 +324,8 @@ void cobi_norm_nonlinear(
     }
 }
 
-// Produces normalized problem, moves linear terms from diagonal to first row and col
+// Produces normalized problem, moves linear terms from diagonal to first row and col.
+// Can skew the resulting problem if the min and max weights are not equidistant from zero.
 void cobi_norm_linear(
     int norm[][COBI_HW_NUM_SPINS],
     double ising[][COBI_NUM_SPINS],
@@ -389,6 +390,75 @@ void cobi_norm_linear(
     }
 }
 
+// Produces normalized problem, moves linear terms from diagonal to first row and col.
+// Keeps the scaled problem centered around zero.
+void cobi_norm_linear_absmax(
+    int norm[][COBI_HW_NUM_SPINS],
+    double ising[][COBI_NUM_SPINS],
+    double scale
+) {
+    double min = 0;
+    double max = 0;
+    double cur_v = 0;
+
+    for (size_t i = 0; i < COBI_NUM_SPINS; i++) {
+        for (size_t j = i; j < COBI_NUM_SPINS; j++) {
+            cur_v = ising[i][j];
+
+            if (abs(cur_v) > max) max = cur_v;
+        }
+    }
+
+    // Ensure values are scaled symmetrically around 0
+    min = -1 * max;
+
+    // Linear scaling to range [-14, 14]
+    // (y + 14) / (x - min) = 28 / (max - min)
+    // y = (28 / (max - min)) * (x - min) - 14
+
+    /* const double upscale_factor = 1.5; */
+    const int top = 14;
+    const int bot = -14;
+    const int range = top - bot;
+
+    for (size_t i = 0; i < COBI_NUM_SPINS; i++) {
+        for (size_t j = i; j < COBI_NUM_SPINS; j++) {
+            cur_v = ising[i][j];
+
+            // indicies into norm matrix
+            int row = i + 1;
+            int col = j + 1;
+
+            // linearly interpolate and upscale
+            int scaled_val = round(
+                scale * ((range * (cur_v - min) / (max - min)) - top)
+            );
+
+            // clamp
+            if (scaled_val < 0 && scaled_val < bot) {
+                scaled_val = bot;
+            } else if (scaled_val > 0 && scaled_val > top) {
+                scaled_val = top;
+            }
+
+            if (cur_v == 0) {
+                norm[row][col] = 0;
+                norm[col][row] = 0;
+            } else if (i == j) {
+                // Split linear term between first row and first column
+                int symmetric_val = scaled_val / 2;
+                norm[0][col] = symmetric_val;
+                norm[row][0] = symmetric_val + (scaled_val % 2);
+            } else {
+                int symmetric_val = scaled_val / 2;
+                norm[row][col] = symmetric_val;
+                norm[col][row] = symmetric_val + (scaled_val % 2);
+            }
+        }
+    }
+}
+
+
 void cobi_norm_val(
     int norm_ising[][COBI_HW_NUM_SPINS],
     double ising[][COBI_NUM_SPINS],
@@ -437,7 +507,7 @@ void cobi_norm_val(
     }
     default:
         // default to linear with no scaling
-        cobi_norm_linear(norm_ising, ising, 1);
+        cobi_norm_linear_absmax(norm_ising, ising, 1);
         break;
     }
 }
@@ -531,7 +601,8 @@ void cobi_solver(
 
     reftime = omp_get_wtime();
     CobiResult result;
-    int rc = _run_native_problem(&norm_ising, &result);
+    bool bypass_grad_descent = false;
+    int rc = _run_native_problem(&norm_ising, &result, bypass_grad_descent);
     if (rc != 0) {
         printf("ERROR running problem: %d\n", rc);
         exit(rc);
